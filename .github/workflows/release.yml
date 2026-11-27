@@ -1,0 +1,102 @@
+name: Release
+
+on:
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: release-main
+  # Keep every push queued while earlier releases build and publish.
+  queue: max
+  cancel-in-progress: false
+
+jobs:
+  prepare:
+    # An explicit release request takes precedence over skip markers inherited
+    # from earlier documentation commits in a squash merge message.
+    if: ${{ contains(github.event.head_commit.message, '[release]') || !contains(github.event.head_commit.message, '[skip release]') }}
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    outputs:
+      version: ${{ steps.version.outputs.version }}
+      ref: ${{ steps.version.outputs.ref }}
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          ref: main
+          fetch-depth: 0
+          persist-credentials: false
+      - uses: actions/setup-python@v6
+        with:
+          python-version: '3.12'
+      - name: Prepare signed version commit and tag
+        id: version
+        run: python tools/release/release.py prepare
+        env:
+          # A token allowed to bypass main's PR rule is needed on protected repositories.
+          GH_TOKEN: ${{ secrets.RELEASE_TOKEN || github.token }}
+
+  build:
+    needs: prepare
+    uses: ./.github/workflows/build.yml
+    with:
+      ref: ${{ needs.prepare.outputs.ref }}
+
+  documentation:
+    needs: prepare
+    permissions:
+      contents: read
+      pages: write
+      id-token: write
+    uses: ./.github/workflows/pages.yml
+    with:
+      ref: ${{ needs.prepare.outputs.ref }}
+
+  publish-python:
+    needs: [prepare, build, documentation]
+    runs-on: ubuntu-latest
+    environment:
+      name: pypi
+      url: https://pypi.org/p/quantsupport
+    permissions:
+      id-token: write
+    steps:
+      - uses: actions/download-artifact@v6
+        with:
+          pattern: python-*
+          merge-multiple: true
+          path: dist
+      - name: Publish Python wheels and source distribution
+        uses: pypa/gh-action-pypi-publish@release/v1
+        with:
+          skip-existing: true
+
+  github-release:
+    needs: [prepare, build, documentation, publish-python]
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/download-artifact@v6
+        with:
+          pattern: python-*
+          merge-multiple: true
+          path: dist
+      - uses: actions/download-artifact@v6
+        with:
+          pattern: portable-python-*
+          merge-multiple: true
+          path: dist
+      - name: Create release and attach packages
+        run: |
+          if ! gh release view "$RELEASE_TAG" --repo "$GITHUB_REPOSITORY" > /dev/null 2>&1; then
+            gh release create "$RELEASE_TAG" --repo "$GITHUB_REPOSITORY" --verify-tag --generate-notes --title "$RELEASE_TAG"
+          fi
+          gh release upload "$RELEASE_TAG" dist/* --repo "$GITHUB_REPOSITORY" --clobber
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RELEASE_TAG: v${{ needs.prepare.outputs.version }}

@@ -1,0 +1,12 @@
+/target/
+/.venv*/
+/artifacts/
+/dist/
+__pycache__/
+.DS_Store
+/docs/_build/
+/docs/autoapi/
+/docs/python/sections/
+/docs/python/studies/notebooks/
+/python/quantsupport/*.so
+/python/quantsupport/*.pyd

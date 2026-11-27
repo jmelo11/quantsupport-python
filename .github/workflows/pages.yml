@@ -1,0 +1,107 @@
+name: Documentation
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  workflow_run:
+    workflows: [Release]
+    branches: [main]
+    types: [completed]
+  workflow_dispatch:
+    inputs:
+      release_tag:
+        description: Published binding release to deploy (blank selects latest)
+        required: false
+        type: string
+      documentation_ref:
+        description: Optional ref supplying documentation corrections
+        required: false
+        type: string
+  workflow_call:
+    inputs:
+      ref:
+        description: Binding commit to validate before publication
+        required: true
+        type: string
+
+permissions:
+  contents: read
+
+concurrency:
+  group: pages-${{ github.event_name }}-${{ inputs.ref || github.ref }}
+  queue: max
+  cancel-in-progress: false
+
+jobs:
+  build:
+    if: github.event_name != 'workflow_run' || github.event.workflow_run.conclusion == 'success'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          ref: ${{ inputs.ref || github.sha }}
+          fetch-depth: 0
+      - uses: actions/setup-python@v6
+        with:
+          python-version: '3.12'
+      - name: Select published binding release
+        id: release
+        if: github.ref == 'refs/heads/main' && (github.event_name == 'workflow_run' || github.event_name == 'workflow_dispatch')
+        run: |
+          python tools/release/release_source.py --repository "$GITHUB_REPOSITORY" --run-id "$RELEASE_RUN_ID" --tag "$RELEASE_TAG"
+          cp tools/release/python_downloads.py "$RUNNER_TEMP/python_downloads.py"
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RELEASE_RUN_ID: ${{ github.event.workflow_run.id }}
+          RELEASE_TAG: ${{ inputs.release_tag }}
+      - name: Check out released binding source
+        if: steps.release.outputs.ref != ''
+        run: git checkout --detach "$RELEASE_REF"
+        env:
+          RELEASE_REF: ${{ steps.release.outputs.ref }}
+      - name: Apply requested documentation corrections
+        if: steps.release.outputs.ref != '' && github.event_name == 'workflow_dispatch' && inputs.documentation_ref != ''
+        run: git restore --source="$DOCUMENTATION_REF" -- docs
+        env:
+          DOCUMENTATION_REF: ${{ inputs.documentation_ref }}
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: Swatinem/rust-cache@v2
+      - name: Install documentation dependencies
+        run: python -m pip install -r docs/requirements.txt "maturin>=1.5,<2.0"
+      - name: Build and install this checkout for executable guides
+        run: |
+          maturin build --locked --release --out docs/_build/wheels
+          python -m pip install docs/_build/wheels/*.whl
+      - name: Test reference generation
+        run: python -m unittest discover -s tools/tests -p test_reference.py -v
+      - name: Build documentation
+        run: python -m sphinx -W -b html docs docs/_build/html
+      - name: Stage released Python packages and download page
+        if: steps.release.outputs.tag != ''
+        run: |
+          python "$RUNNER_TEMP/python_downloads.py" --repository "$GITHUB_REPOSITORY" --tag "$RELEASE_TAG" --page docs/_build/html/python/downloads.html --destination docs/_build/html/downloads/python
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RELEASE_TAG: ${{ steps.release.outputs.tag }}
+      - uses: actions/configure-pages@v5
+        if: steps.release.outputs.tag != ''
+      - uses: actions/upload-pages-artifact@v3
+        if: steps.release.outputs.tag != ''
+        with:
+          path: docs/_build/html
+
+  deploy:
+    if: github.ref == 'refs/heads/main' && (github.event_name == 'workflow_run' || github.event_name == 'workflow_dispatch')
+    needs: build
+    runs-on: ubuntu-latest
+    permissions:
+      pages: write
+      id-token: write
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - uses: actions/deploy-pages@v4
+        id: deployment
