@@ -721,6 +721,7 @@ market_index_constants!(
     NOWA,
     SWESTR,
     ICP,
+    IBR,
     VIX,
 );
 

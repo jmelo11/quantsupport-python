@@ -513,6 +513,7 @@ class MarketIndex:
     NOWA: Final[MarketIndex]
     SWESTR: Final[MarketIndex]
     ICP: Final[MarketIndex]
+    IBR: Final[MarketIndex]
     VIX: Final[MarketIndex]
 
 @final

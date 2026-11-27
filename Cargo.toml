@@ -23,7 +23,7 @@ crate-type = ["cdylib", "rlib"]
 doctest = false
 
 [dependencies]
-quantsupport = { git = "https://github.com/jmelo11/quantsupport", rev = "251abc5e71aff7b979929c6b7f4ef821ef22c7e9" }
+quantsupport = { git = "https://github.com/jmelo11/quantsupport", rev = "3a50b8c5f55ddd45d7027413b010d521649a90e6" }
 pyo3 = { version = "0.29", features = ["multiple-pymethods"] }
 pythonize = "0.29"
 serde = { version = "1.0", features = ["derive"] }
