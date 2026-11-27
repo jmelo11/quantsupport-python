@@ -143,6 +143,20 @@ def select(repository, tag):
     return selected
 
 
+PACKAGE_INTRODUCTION = """<p>Choose your operating system, architecture and Python version below.
+Both wheels and folder ZIPs contain the compiled library, the Python modules,
+the type stubs (<code>.pyi</code>) and the <code>py.typed</code> marker.
+Keep all of these files together.</p>
+<p>To use a folder ZIP, install pandas with
+<code>python -m pip install pandas</code>, extract the ZIP and add its
+<code>site-packages</code> directory to Python's search path.</p>
+"""
+
+NO_RELEASE_NOTICE = """<p>No packages have been published yet. Until the first release,
+<a href="guide/first-valuation.html">build QuantSupport from source</a>.</p>
+"""
+
+
 def render(repository, selected, local_prefix=None):
     if not re.fullmatch(r"[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+", repository):
         raise ValueError("Expected repository owner/name")
@@ -215,6 +229,15 @@ def stage(repository, tag, page, destination):
             shutil.copy2(downloaded / name, release_directory / name)
     prefix = Path(os.path.relpath(destination, page.parent)).as_posix()
     tables = render(repository, selected, local_prefix=prefix)
+    write_page(page, PACKAGE_INTRODUCTION + tables)
+
+
+def write_placeholder(page):
+    """Write the download page for a site published before the first release."""
+    write_page(page, NO_RELEASE_NOTICE)
+
+
+def write_page(page, body):
     source = (
         """<!doctype html>
 <html lang="en">
@@ -238,15 +261,8 @@ nav { margin-bottom: 2rem; }
 <a href="../autoapi/quantsupport/index.html">Classes and methods</a> ·
 <a href="#editor-support">Autocomplete and linting setup</a>
 </nav>
-<p>Choose your operating system, architecture and Python version below.
-Both wheels and folder ZIPs contain the compiled library, the Python modules,
-the type stubs (<code>.pyi</code>) and the <code>py.typed</code> marker.
-Keep all of these files together.</p>
-<p>To use a folder ZIP, install pandas with
-<code>python -m pip install pandas</code>, extract the ZIP and add its
-<code>site-packages</code> directory to Python's search path.</p>
 """
-        + tables
+        + body
         + """
 <h2 id="editor-support">Autocomplete and linting for folder ZIPs</h2>
 <p>Adding the directory with <code>sys.path.insert</code> lets your code import
@@ -282,11 +298,14 @@ for constructors, methods, properties and accepted parameters.</p>
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--repository", required=True)
-    parser.add_argument("--tag", required=True)
+    parser.add_argument("--tag", help="Release to stage; omit to write the no-release page")
     parser.add_argument("--page", type=Path, required=True)
     parser.add_argument("--destination", type=Path, required=True)
     args = parser.parse_args()
-    stage(args.repository, args.tag, args.page, args.destination)
+    if args.tag:
+        stage(args.repository, args.tag, args.page, args.destination)
+    else:
+        write_placeholder(args.page)
 
 
 if __name__ == "__main__":

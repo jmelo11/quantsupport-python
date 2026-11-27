@@ -176,6 +176,16 @@ class PythonDownloadTests(unittest.TestCase):
             self.assertFalse(page.exists())
             self.assertFalse(destination.exists())
 
+    def test_site_without_a_release_gets_a_page_without_package_links(self):
+        with TemporaryDirectory() as temporary:
+            page = Path(temporary) / "python" / "downloads.html"
+            downloads.write_placeholder(page)
+            html = page.read_text()
+            self.assertIn("No packages have been published yet", html)
+            self.assertIn('href="guide/first-valuation.html"', html)
+            self.assertNotIn("releases/download", html)
+            self.assertNotIn(".whl", html)
+
 
 if __name__ == "__main__":
     unittest.main()
