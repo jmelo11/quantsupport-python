@@ -1,8 +1,8 @@
 """Build dated script events for the tutorial's six-year semiannual note.
 
-This intentionally narrow translator keeps string assembly out of the bond
-valuation narrative. It models the non-callable underlying only. It is not a
-general schedule engine or an issuer-exercise algorithm.
+This helper handles only this note's schedule, so the notebooks can focus on
+valuation. It writes the noncallable note: it does not model the issuer's call
+and is not a general schedule builder.
 """
 
 import quantsupport as qs
@@ -13,7 +13,7 @@ def underlying_script(bond):
 
     The note uses unadjusted semiannual dates, Actual/365 fixed accruals, and
     SOFR's Actual/360 floating accruals. Rates reset at accrual start. Issuer
-    calls on the supplied bond are deliberately omitted from the script.
+    calls on the supplied bond are left out of the script.
     """
     terms = bond.to_dict()
     start = qs.Date.parse(terms["start_date"])

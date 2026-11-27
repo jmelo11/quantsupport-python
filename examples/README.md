@@ -1,7 +1,7 @@
 # QuantSupport example notebooks
 
 These fifteen notebooks show how to use QuantSupport for quantitative finance
-calculations in Python. Each one starts from a contract or market problem,
+calculations in Python. Each one starts from a contract or market question,
 states its assumptions, and explains the results. They assume you know the
 financial products and introduce the library as they go.
 
@@ -17,33 +17,33 @@ loader. The portfolio notebooks define their small markets in the notebook.
 | Scope | Catalog | Coverage |
 | --- | --- | --- |
 | `bootstrap` | [Curve construction](bootstrap/README.md) | Quotes, bootstrap configurations, nodes, pillars, and forwards |
-| `valuation/swaps` | [Swaps](valuation/swaps/README.md) | First valuation, par coupon and base-currency conversion |
+| `valuation/swaps` | [Swaps](valuation/swaps/README.md) | First valuation, par coupon and conversion to the reporting currency |
 | `valuation/bonds` | [Bonds](valuation/bonds/README.md) | Straight-bond analytics and callable stepped bonds |
-| `valuation/caps` | [Caps and caplets](valuation/caps/README.md) | Black option values and curve/volatility risk |
+| `valuation/caps` | [Caps and caplets](valuation/caps/README.md) | Black option values and curve and volatility risk |
 | `valuation/loans` | [Loans](valuation/loans/README.md) | Repayment, resets, prepayment, credit, valuation and risk |
-| `volatilitysurface` | [Volatility markets](volatilitysurface/README.md) | Curves, surfaces, and independent rate/volatility valuation shocks |
-| `hullwhite` | [Rate simulations](hullwhite/README.md) | Calibrated model setup and retrieving simulation results |
+| `volatilitysurface` | [Volatility markets](volatilitysurface/README.md) | Curves, surfaces, and separate rate and volatility shocks |
+| `hullwhite` | [Rate simulations](hullwhite/README.md) | Setting up a model fitted to market prices and reading the simulated paths |
 | `sensitivity` | [Portfolio and risk](sensitivity/README.md) | Portfolio basics, valuation requests, aggregation, quote risk, and scenarios |
-| `scripting` | [Payoff events](scripting/README.md) | Dated payoff scripts and representation checks |
-| `cva` | [Exposure and XVA](cva/README.md) | Netting sets, credit/funding inputs, exposure profiles, and XVA |
+| `scripting` | [Payoff events](scripting/README.md) | Dated payoff scripts and a check against the built-in bond pricer |
+| `cva` | [Exposure and XVA](cva/README.md) | Netting sets, credit and funding inputs, exposure profiles, and XVA |
 
 ## Suggested reading order
 
 | Order | Notebook | What you will learn |
 | --- | --- | --- |
-| 1 | [From quotes to a swap](valuation/swaps/tour.ipynb) | Dates and conventions, product/position terms, market indices, the context lifecycle, requests, and result units |
+| 1 | [From quotes to a swap](valuation/swaps/tour.ipynb) | Dates and conventions, contracts and positions, market indices, using a pricing context, requests, and result units |
 | 2 | [Par swap](valuation/swaps/par_swap.ipynb) | Solve the fixed coupon and verify zero PV |
-| 3 | [Fixed-rate bond](valuation/bonds/fixed_rate_bond.ipynb) | Price/Z-spread anchors, yield, duration, payments and quote risk |
-| 4 | [Caps and caplets](valuation/caps/caps_and_caplets.ipynb) | Black option values and separate rate/volatility risk |
-| 5 | [Loans](valuation/loans/loans.ipynb) | Repayment, resets, prepayment, par coupon/spread, credit and risk |
-| 6 | [Currency conversion](valuation/swaps/currency_conversion.ipynb) | Read FX direction, value a CLP swap under USD collateral, and reconcile its base-currency PV |
-| 7 | [Curves and volatility](volatilitysurface/curves_and_volatility.ipynb) | Configure and inspect curves and surfaces, query forwards and smiles, and explain market-shock P&L |
-| 8 | [Simulations and their results](hullwhite/simulations.ipynb) | Model calibration, path count/seed/grid, retrieving paths, seeds and sampling error |
-| 9 | [How a portfolio works](sensitivity/portfolio.ipynb) | Build positions, use `qs.Portfolio`, reconcile PV/risk/payments, and understand membership and request rules |
-| 10 | [Portfolio valuation and risk](sensitivity/portfolio_risk.ipynb) | Aggregate quote risk and payments, distinguish DV01 from vega, and check AAD against full revaluation |
-| 11 | [Coupon and cashflow aggregation](sensitivity/portfolio_aggregation.ipynb) | Use `qs.Portfolio`, retain fixing indices, inspect weighted quotes, and separate interest/capital payments |
-| 12 | [Callable stepped-coupon bond](valuation/bonds/stepped_coupon_bond.ipynb) | Typed terms, calibrated tree/Fourier engines, OAS and risk |
-| 13 | [Scripted cashflows](scripting/scripted_cashflows.ipynb) | Dated observations/payments and the native-versus-scripted bond check |
+| 3 | [Fixed-rate bond](valuation/bonds/fixed_rate_bond.ipynb) | Valuing from a price or a Z-spread, yield, duration, payments and quote risk |
+| 4 | [Caps and caplets](valuation/caps/caps_and_caplets.ipynb) | Black option values and separate rate and volatility risk |
+| 5 | [Loans](valuation/loans/loans.ipynb) | Repayment, resets, prepayment, par coupon and spread, credit and risk |
+| 6 | [Currency conversion](valuation/swaps/currency_conversion.ipynb) | Read FX quote direction, value a CLP swap under USD collateral, and rebuild its USD PV from the cashflows |
+| 7 | [Curves and volatility](volatilitysurface/curves_and_volatility.ipynb) | Configure and inspect curves and surfaces, query forwards and smiles, and explain P&L from market shocks |
+| 8 | [Simulations and their results](hullwhite/simulations.ipynb) | Fitting the model, choosing path count, seed and dates, reading paths, and sampling error |
+| 9 | [How a portfolio works](sensitivity/portfolio.ipynb) | Build positions, use `qs.Portfolio`, check PV, risk and payments against the positions, and learn which positions and requests a portfolio accepts |
+| 10 | [Portfolio valuation and risk](sensitivity/portfolio_risk.ipynb) | Add up quote risk and payments, tell DV01 from vega, and check sensitivities against full revaluation |
+| 11 | [Coupon and cashflow aggregation](sensitivity/portfolio_aggregation.ipynb) | Use `qs.Portfolio`, keep fixing indices apart, read merged coupons, and separate interest from principal payments |
+| 12 | [Callable stepped-coupon bond](valuation/bonds/stepped_coupon_bond.ipynb) | Contract terms, tree and Fourier pricing with a fitted model, OAS and risk |
+| 13 | [Scripted cashflows](scripting/scripted_cashflows.ipynb) | Dated observations and payments, and a check of a scripted bond against the built-in pricer |
 | 14 | [Exposure and XVA](cva/xva.ipynb) | Netting sets, client terms, exposure profiles and adjustment risk |
 
 Start with the first notebook. Each later notebook sets up its own small
@@ -92,9 +92,9 @@ Jupyter starts each kernel in the notebook's folder. If your editor uses a
 different working directory, set the kernel's working directory to the folder
 that contains the notebook. The runner below does this for you.
 
-The notebooks do not run Cargo, download live data, or depend on variables from
-other notebooks. If the package and the usual notebook and plotting
-libraries are installed, you can run them without further setup.
+Each notebook runs on its own, without Cargo, live data, or variables from
+other notebooks. Once the package and the usual notebook and plotting
+libraries are installed, no further setup is needed.
 
 To run all notebooks without a browser, run this from the repository root
 with your environment's Python:
@@ -117,9 +117,9 @@ What the runner does:
 - It finds notebooks in every folder and runs each one in a fresh kernel that
   uses the current interpreter.
 - It checks the notebook format and fails on any cell error.
-- Before running cells, it compares the kernel with the caller: Python
-  executable, environment prefix, package import path and version, and the
-  package's exports. It stops at once if the package is out of date.
+- Before running cells, it checks that the kernel uses the same Python
+  executable, environment, package location, package version, and package
+  exports as the runner. It stops at once if the package is out of date.
 - The reported executable must be inside your intended environment. Do not
   replace a virtual environment's Python symlink with the base interpreter it
   points to.
@@ -178,13 +178,14 @@ a CLP curve under USD collateral.
 Pricing:
 
 1. Create a `PricingContext` and enter `with context:`. Entering checks the
-   inputs. Curves and other objects are then built when a curve query,
-   valuation, script, or XVA calculation first needs them.
+   inputs. Each curve or other market object is built the first time a curve
+   query, valuation, script, or XVA calculation needs it.
 2. Optionally call `initialize()` to build all configured objects up front.
    The `with` block does not need it.
 3. Call `evaluate(trade, requests)`. It returns an `EvaluationResults` object
-   with numbers and pandas tables. The instrument and trade describe the
-   contract and position; the built-in pricer does the valuation.
+   with numbers and pandas tables. The instrument holds the contract terms,
+   the trade holds the position, and the library's pricer for that product
+   does the valuation.
 4. Keep the results and use them after the block. Use curve, surface, and
    simulation objects only inside the active context.
 5. When the block exits, even because of an exception, the context releases
@@ -200,22 +201,23 @@ Other workflows:
   answer different questions.
 - For portfolio valuation, use
   `context.evaluate(Portfolio("BOOK", trades), requests)`. The portfolio risk
-  notebook also shows how to reconcile results with labeled pandas tables.
+  notebook also shows how to check portfolio totals against the individual
+  positions with labeled pandas tables.
 - Legal netting is defined separately with `NettingSet`.
 
 You can also price your own Python instruments with `register_pricer`; see the
 [guide to extending valuation in Python](https://jmelo11.github.io/quantsupport-python/python/guide/risk.html#extending-valuation-in-python). The
 notebooks use the built-in products.
 
-## Auxiliary files and market provenance
+## Helper files and market data
 
 | File | Responsibility |
 | --- | --- |
-| `market_data.py` in each folder | Loader imported by the folder's notebooks; reads market inputs and configurations, and does no pricing |
-| [stepped_cashflows.py](scripting/stepped_cashflows.py) | Turns the notebook's six-year semiannual note into script events; does not model the issuer's optimal call |
-| [valuation/bonds/data/bond_tree.json](valuation/bonds/data/bond_tree.json), [valuation/bonds/data/bond_fourier.json](valuation/bonds/data/bond_fourier.json) | Native pricer/model schema and numerical grids |
-| [hullwhite/data/simulation.json](hullwhite/data/simulation.json) | Calibrated Hull–White simulation settings |
-| [cva/data/xva.json](cva/data/xva.json) | Calibrated LGM exposure-engine settings |
+| `market_data.py` in each folder | Loader imported by the folder's notebooks; reads market inputs and configurations |
+| [stepped_cashflows.py](scripting/stepped_cashflows.py) | Turns the notebook's six-year semiannual note into script events, without the issuer's call |
+| [valuation/bonds/data/bond_tree.json](valuation/bonds/data/bond_tree.json), [valuation/bonds/data/bond_fourier.json](valuation/bonds/data/bond_fourier.json) | Pricer and model settings and numerical grids for the callable bond |
+| [hullwhite/data/simulation.json](hullwhite/data/simulation.json) | Hull–White simulation settings, with volatility fitted to caplets |
+| [cva/data/xva.json](cva/data/xva.json) | Settings for the exposure simulation, using a linear Gaussian model (LGM) fitted to caplets |
 | [run_notebooks.py](run_notebooks.py) | Runs the notebooks against the installed package |
 
 The market data is illustrative, not real:
@@ -235,7 +237,7 @@ notebooks, their helper files and market data are missing. The quotes are never
 downloaded or updated automatically.
 
 The market contains a SOFR curve and a Black caplet volatility surface with
-absolute-strike smiles. The simulation and callable-bond notebooks calibrate a
+absolute-strike smiles. The simulation and callable-bond notebooks fit a
 short-rate volatility schedule to that surface. A quoted Black volatility and
 the model's absolute sigma are different quantities.
 
@@ -259,31 +261,33 @@ the model's absolute sigma are different quantities.
 
 ## Numerical checks and limitations
 
-| Study | Independent numerical evidence |
+Each notebook checks the library's results by an independent calculation:
+
+| Notebook | Checks |
 | --- | --- |
-| Bootstrap | Deposit repricing, forward/discount-factor identity, positive discount factors |
-| Swap tour/par | Signed cashflow PV, reversed position, annuity/par formula and zero-PV repricing |
-| Currency conversion | FX reciprocity, CLP/USD PV reconciliation, principal cancellation |
-| Straight bond | Spread and yield PV reconstruction, duration bump, spread AAD/bump |
-| Caps | Direct Black formula, put–call parity, explicit caplet-strip sum |
-| Callable bond | OAS round trip, callable/underlying inequality, observed grid refinement |
-| Volatility | Smile interpolation and isolation of rate versus volatility shocks |
-| Simulation | Calibration residuals/domain, seeds, Gaussian Euler moment recursion |
-| Portfolio introduction | Individual PV/risk/payment sums, zero-rate central differences, discounted payment PV, repeated/opposing positions |
-| Portfolio risk | Rate/volatility AAD versus central differences; signed payment PVs |
-| Scripting | Deterministic native representation check; repeated-seed stochastic estimates |
-| Loans | Annuity payment, principal conservation, receipt PVs, par repricing, funding PV01 |
-| XVA | Signed profile identity, raw-exposure netting, margin/profile distinction |
+| Bootstrap | Curve gives back the deposit rate; forwards match discount-factor ratios; discount factors are positive |
+| Swap tour and par swap | PV rebuilt from signed cashflows; reversed position; annuity and par-rate formula; zero PV at the par rate |
+| Currency conversion | FX rate and its inverse; CLP and USD PVs agree; principal exchanges cancel |
+| Straight bond | PV rebuilt from the spread and from the yield; duration by bumping the yield; spread sensitivity against a bump |
+| Caps | Black formula by hand; caplet–floorlet parity; cap equals the sum of its caplets |
+| Callable bond | OAS round trip; callable value below the noncallable value; finer grids |
+| Volatility | Smile interpolation; rate and volatility shocks affect only their own inputs |
+| Simulation | Calibration price errors and strike range; seeds; mean and variance against the Euler formulas |
+| Portfolio introduction | PV, risk and payments equal the sums over positions; central differences on zero rates; discounted payments equal PV; repeated and opposite positions |
+| Portfolio risk | Rate and volatility sensitivities against central differences; discounted signed payments |
+| Scripting | Scripted bond equals the built-in pricer at zero volatility; caplet estimates across seeds |
+| Loans | Level payment by hand; receipt PVs; repricing at the par rate; funding PV01 against a bump |
+| XVA | `EE = EPE + ENE`; netting lowers positive exposure; margin changes CVA and FVA but not the profiles |
 
-Tolerances, seeds, and grids are visible in the code. Exact formula checks,
-calibration derivatives, discretization checks, and sampling checks each test
-something different. Keep in mind:
+Tolerances, seeds, and grids are visible in the code. Formula checks,
+calibration checks, grid checks, and sampling checks each test something
+different. Keep in mind:
 
-- Simulated Hull–White paths use Euler steps and are stored as plain `f64`
-  numbers. Exported paths carry no sensitivities to the input quotes.
-- A script's result variable may include a martingale control-variate
-  adjustment. With a finite number of paths, the raw payment PVs may not add
-  up to that adjusted result.
+- Simulated Hull–White paths use Euler time steps and are returned as plain
+  numbers. They carry no sensitivities to the input quotes.
+- A script's result variable may include a control-variate adjustment, which
+  reduces Monte Carlo noise. With a finite number of paths, the unadjusted
+  payment PVs may not add up to that result.
 - Exposure profiles are averages at each date, before margin. ENE is signed and
   negative. CVA and FVA use paths after margin, and FVA uses signed exposure.
 - A scenario target matches quotes whose identifier contains all of its
@@ -291,6 +295,6 @@ something different. Keep in mind:
   The volatility notebooks use one target for a whole quote family and check
   that each intended quote moves exactly once.
 
-These notebooks explain and check the library's calculations. Their simplified
-settings and illustrative markets do not show that a model is adequate for
-production use.
+These notebooks explain and check the library's calculations. They use
+simplified settings and illustrative markets, so they do not show that a
+model is fit for production use.

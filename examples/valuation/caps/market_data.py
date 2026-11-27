@@ -18,7 +18,7 @@ MARKET_DATA = EXAMPLES / "data" / "hullwhite"
 
 @dataclass
 class MarketInputs:
-    """Unconstructed inputs; a PricingContext turns them into market objects."""
+    """Raw market inputs; a PricingContext builds curves and surfaces from them."""
 
     quotes: qs.QuoteStore
     curves: list[qs.CurveConfiguration]

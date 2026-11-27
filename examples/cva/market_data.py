@@ -2,7 +2,7 @@
 
 Paths are relative to this module, never the shell's working directory. The
 market is the repository's illustrative 2026-02-24 Hull-White snapshot, not a
-live feed. This module is example code, not part of the installed binding.
+live feed. This module is example code, not part of the installed package.
 """
 
 import json
@@ -17,7 +17,7 @@ MARKET_DATA = EXAMPLES / "data" / "hullwhite"
 
 @dataclass
 class MarketInputs:
-    """Unconstructed inputs; a PricingContext turns them into market objects."""
+    """Raw market inputs; a PricingContext builds curves and surfaces from them."""
 
     quotes: qs.QuoteStore
     curves: list[qs.CurveConfiguration]
@@ -57,7 +57,7 @@ def load_market():
 
 
 def read_configuration(scope, filename):
-    """Read an editable native configuration from one example scope."""
+    """Read an editable JSON configuration from one example folder."""
     return json.loads(
         (EXAMPLES / scope / "data" / filename).read_text(encoding="utf-8")
     )

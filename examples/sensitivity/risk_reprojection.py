@@ -48,7 +48,7 @@ def main():
     with context:
         native = context.evaluate(trade, requests)
 
-        # The reporting OIS contracts do not need observations in the quote store.
+        # The OIS quotes used for reporting need not be in the quote store.
         projected = context.reproject_risk(["OIS_EUR_ESTR_1Y", "OIS_EUR_ESTR_2Y"])
 
         # Omit dates to use the bootstrapped curve's future nodes. To choose a
@@ -66,7 +66,8 @@ def main():
 
     report("Original deposit quote risk", native)
 
-    # Each view owns its market snapshot and outlives the original context scope.
+    # Each view keeps its own copy of the market, so it works after the original
+    # `with context:` block has ended.
     for label, view in [
         ("Reprojected OIS quote risk", projected),
         ("Post-bootstrap zero-rate risk", zeros),
