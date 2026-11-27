@@ -56,6 +56,15 @@ jobs:
           GH_TOKEN: ${{ github.token }}
           RELEASE_RUN_ID: ${{ github.event.workflow_run.id }}
           RELEASE_TAG: ${{ inputs.release_tag }}
+      - name: Find latest published release for downloads
+        id: latest
+        if: github.ref == 'refs/heads/main' && github.event_name == 'push' && !inputs.ref
+        run: |
+          cp tools/release/python_downloads.py "$RUNNER_TEMP/python_downloads.py"
+          tag=$(gh release view --repo "$GITHUB_REPOSITORY" --json tagName --jq .tagName 2>/dev/null || true)
+          echo "tag=$tag" >> "$GITHUB_OUTPUT"
+        env:
+          GH_TOKEN: ${{ github.token }}
       - name: Check out released binding source
         if: steps.release.outputs.ref != ''
         run: git checkout --detach "$RELEASE_REF"
@@ -79,21 +88,21 @@ jobs:
       - name: Build documentation
         run: python -m sphinx -W -b html docs docs/_build/html
       - name: Stage released Python packages and download page
-        if: steps.release.outputs.tag != ''
+        if: steps.release.outputs.tag != '' || steps.latest.outputs.tag != ''
         run: |
           python "$RUNNER_TEMP/python_downloads.py" --repository "$GITHUB_REPOSITORY" --tag "$RELEASE_TAG" --page docs/_build/html/python/downloads.html --destination docs/_build/html/downloads/python
         env:
           GH_TOKEN: ${{ github.token }}
-          RELEASE_TAG: ${{ steps.release.outputs.tag }}
+          RELEASE_TAG: ${{ steps.release.outputs.tag || steps.latest.outputs.tag }}
       - uses: actions/configure-pages@v5
-        if: steps.release.outputs.tag != ''
+        if: steps.release.outputs.tag != '' || (github.ref == 'refs/heads/main' && github.event_name == 'push' && !inputs.ref)
       - uses: actions/upload-pages-artifact@v3
-        if: steps.release.outputs.tag != ''
+        if: steps.release.outputs.tag != '' || (github.ref == 'refs/heads/main' && github.event_name == 'push' && !inputs.ref)
         with:
           path: docs/_build/html
 
   deploy:
-    if: github.ref == 'refs/heads/main' && (github.event_name == 'workflow_run' || github.event_name == 'workflow_dispatch')
+    if: github.ref == 'refs/heads/main' && (github.event_name == 'workflow_run' || github.event_name == 'workflow_dispatch' || (github.event_name == 'push' && !inputs.ref))
     needs: build
     runs-on: ubuntu-latest
     permissions:
