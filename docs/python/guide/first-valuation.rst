@@ -4,18 +4,19 @@ A position, a market, and a valuation
 Installation and reproducibility
 ------------------------------------
 
-Install a released wheel into the interpreter used by your application or
-notebook kernel:
+Install the package into the Python interpreter that runs your application or
+notebook:
 
 .. code-block:: console
 
    python -m pip install quantsupport
 
-For a manual download, choose your operating system, architecture and Python
-version on the `Python packages page <https://jmelo11.github.io/quantsupport-python/python/downloads.html>`_.
-It provides wheels and folder ZIPs containing only QuantSupport. Install
-dependencies separately with ``python -m pip install pandas`` before using a
-folder ZIP. For development from this repository, create a virtual environment,
+To download a package by hand, choose your operating system, architecture,
+and Python version on the `Python packages page <https://jmelo11.github.io/quantsupport-python/python/downloads.html>`_.
+It offers wheels and folder ZIPs. A folder ZIP contains only QuantSupport, so
+first install pandas with ``python -m pip install pandas``.
+
+To build the package from this repository, create a virtual environment,
 install Maturin, and compile the checkout:
 
 .. code-block:: console
@@ -25,29 +26,37 @@ install Maturin, and compile the checkout:
    python -m pip install "maturin>=1.5,<2.0"
    maturin develop -m Cargo.toml --release
 
-On Windows activate ``.venv\Scripts\Activate.ps1`` instead. Source builds require
-the stable Rust toolchain. Select the same interpreter in your application or
-notebook so that it loads the checkout-built binding. To reproduce a valuation,
-retain the market data, conventions, package revision and model parameters.
+On Windows, activate the environment with ``.venv\Scripts\Activate.ps1``.
+Building from source requires the stable Rust toolchain. Use the same
+interpreter in your application or notebook so that it loads the package you
+just built.
+
+To reproduce a valuation later, keep its market data, conventions, package
+version, and model parameters.
 
 Contract and position
 ---------------------
 
-A :py:class:`~quantsupport.instruments.Swap` describes contractual terms.
-A :py:class:`~quantsupport.pricing.Trade` adds execution date, side, and optional
-position-size overrides. Two trades can share the same contract while holding
-opposite positions. The execution date is required; it is not inferred from
-maturity, exercise, or the context date.
+An instrument, such as :py:class:`~quantsupport.instruments.Swap`, holds the
+contract terms. A :py:class:`~quantsupport.pricing.Trade` is your position in
+that instrument. It adds:
 
-For a vanilla swap, ``LongReceive`` receives fixed and pays floating;
-``PayShort`` reverses that direction. Use nonnegative position sizes and express
-direction through ``side``. A product dictionary contains constructor terms,
-not ``side``, ``trade_date``, bond anchors, or futures contract counts.
+- the trade (execution) date, which is required and is never taken from the
+  maturity, exercise, or context date;
+- the side, which sets the direction;
+- optional position-size overrides.
 
-Consider a five-year USD swap that receives a fixed coupon of 3% and pays a
-floating coupon on a notional of USD 10 million. We define the instrument,
-wrap it in a trade and value it against a flat, continuously compounded 3%
-zero-rate curve. Two equal rate pillars specify that curve explicitly.
+Two trades can hold opposite positions in the same contract.
+
+For a vanilla swap, ``LongReceive`` receives fixed and pays floating, and
+``PayShort`` does the opposite. Position sizes must not be negative; set the
+direction with ``side``. A product dictionary holds only constructor terms. Do
+not put ``side``, ``trade_date``, bond anchors, or futures contract counts in it.
+
+The example below values a five-year USD swap with a notional of USD 10
+million. It receives a fixed 3% coupon and pays a floating coupon. The market
+is a flat, continuously compounded 3% zero-rate curve, given by two pillars
+with the same rate.
 
 .. code-block:: python
    :name: guide-python-swap
@@ -88,13 +97,13 @@ zero-rate curve. Two equal rate pillars specify that curve explicitly.
        print(result.price, result.fair_rate, discount)
        print(result.sensitivities)
 
-The receive-fixed position has a negative PV because the continuous curve
-implies floating coupons above the simple fixed coupon. The result's
-``fair_rate`` is the annual decimal fixed coupon that balances the vanilla
-swap under these conventions. Monetary values use the position's notional of
-ten million USD; rates retain decimal units.
+The receive-fixed position has a negative PV. The continuously compounded
+curve implies floating coupons slightly above the simply compounded 3% fixed
+coupon. ``fair_rate`` is the fixed coupon, as an annual decimal, that makes the
+swap's value zero under these conventions. Money amounts are in USD for the
+ten-million notional. Rates are decimals.
 
-For a single-currency fixed-versus-floating swap the economic decomposition is
+For a single-currency fixed-versus-floating swap, the value is
 
 .. math::
 
@@ -102,104 +111,123 @@ For a single-currency fixed-versus-floating swap the economic decomposition is
    = \sum_i D(t,T_i)\,C_i^{\mathrm{fixed}}
      - \sum_j D(t,U_j)\,C_j^{\mathrm{floating}}.
 
-The familiar par coupon :math:`K^*=PV_{\mathrm{float}}/A`, where
-:math:`A=N\sum_i\alpha_iD(t,T_i)`, is a vanilla-swap relationship.
-``Request.FairRate(0)`` solves the first leg's fixed coupon.
-``Request.FairRate(1)`` solves the second leg's floating spread. Each request
-uses the whole trade PV, including principal exchanges and each leg's native
-curves, discount policy and direction; only the selected leg's quote changes.
-Invalid indices fail explicitly. Each evaluation returns one scalar fair rate.
+For a vanilla swap, the par coupon is :math:`K^*=PV_{\mathrm{float}}/A`, where
+:math:`A=N\sum_i\alpha_iD(t,T_i)`.
+
+- ``Request.FairRate(0)`` solves for the first leg's fixed coupon.
+- ``Request.FairRate(1)`` solves for the second leg's floating spread.
+
+The solver sets the whole trade's PV to zero. That PV includes principal
+exchanges and uses each leg's curves, discount policy, and direction. Only the
+selected leg's rate or spread changes. An invalid leg index raises an error.
+Each evaluation returns one fair rate.
 
 Interpreting results
 --------------------
 
-An :py:class:`~quantsupport.pricing.EvaluationResults` holds optional measures:
-a property is ``None`` when it was not produced. ``Value`` requests monetary
-PV, not a clean bond quote. ``Sensitivities`` returns a pandas table with
-``pillar`` and ``value`` columns. Rows are raw derivatives with respect to
-their named input, not automatically DV01 or vega-per-volatility-point.
+An :py:class:`~quantsupport.pricing.EvaluationResults` holds the measures you
+requested. A property is ``None`` when its measure was not calculated.
 
-For a decimal-rate risk factor :math:`q`, the first-order change for a +1
-bp move is :math:`(\partial V/\partial q)10^{-4}`. The explicit curve above has two independently
-labelled zero-rate inputs. Summing their derivatives estimates the effect of a
-parallel move in those zero rates. A bootstrapped market reports derivatives
-with respect to its calibration quotes instead. See :doc:`risk` for a
-full-revaluation check.
+- ``Value`` gives the PV in money, not a clean bond price.
+- ``Sensitivities`` gives a pandas table with ``pillar`` and ``value`` columns.
+  Each row is the derivative of the value with respect to the named input. It
+  is not scaled to DV01 or to vega per volatility point.
 
-``cashflows`` contains ``payment_date``, ``type``, ``amount``, ``fixing``,
-``accrual_period``, ``currency``, ``caplet_strike``, ``floorlet_strike``, and
-``leg_index``. For the generic discounted-cashflow pricer, amounts include leg
-direction and reversed disbursements: receipts are positive and payments are negative.
-The table may include initial disbursements and redemptions on both legs.
-Summing ``amount`` therefore does not reproduce the swap PV. A reconciliation
-must apply discounting and FX conversion where applicable. The table already
-includes the position's cashflow signs.
+For a rate input :math:`q` in decimals, a +1 bp move changes the value by about
+:math:`(\partial V/\partial q)10^{-4}`. The curve above has two labeled
+zero-rate inputs. The sum of their derivatives estimates the effect of moving
+both zero rates in parallel. A bootstrapped curve reports derivatives with
+respect to its calibration quotes instead. See :doc:`risk` for a check against
+full revaluation.
 
-The generic discounted-cashflow pricer excludes payments strictly before the
-valuation date and includes same-day payments. Keep the original contractual
-dates for seasoned deposits: their settled initial advance is excluded from
-PV and risk, while the interest payable at maturity still accrues from the
-original start date. A cashflow report's requested window does not change
-this valuation rule. Specialized pricers have their own payment-selection
-and reporting rules.
+The ``cashflows`` table has the columns ``payment_date``, ``type``,
+``amount``, ``fixing``, ``accrual_period``, ``currency``, ``caplet_strike``,
+``floorlet_strike``, and ``leg_index``.
+
+For the generic discounted-cashflow pricer:
+
+- Amounts include each leg's direction: receipts are positive and payments
+  are negative. Disbursements follow the same rule.
+- The table can include initial disbursements and redemptions on both legs, so
+  the sum of ``amount`` is not the swap PV.
+- To reconcile with PV, discount each amount and convert currencies where
+  needed. Do not apply the position's direction again.
+- Payments before the valuation date are excluded from PV. Payments on the
+  valuation date are included.
+- For a seasoned deposit, keep the original contract dates. Its initial
+  advance, already paid, is excluded from PV and risk. The interest paid at
+  maturity still accrues from the original start date.
+- The date window of a cashflow report does not change these valuation rules.
+
+Specialized pricers have their own rules for which payments they include and
+report.
 
 Context lifetime
 ----------------
 
-Constructing :py:class:`~quantsupport.pricing.PricingContext` stores inputs.
-Entering ``with context:`` validates them, activates the scope and enables
-construction of requested curves, volatility objects, models and simulations.
-Call ``context.initialize()`` to construct all configured objects eagerly.
-Valuation services manage their differentiation recording within this
-lifecycle.
+Creating a :py:class:`~quantsupport.pricing.PricingContext` only stores its
+inputs. Entering ``with context:`` checks the inputs and makes the context
+active. From then on, curves, volatility objects, models, and simulations are
+built when a calculation first needs them. Call ``context.initialize()`` to
+build all configured objects at once.
 
-``trade.evaluate(requests=None)`` uses the innermost active context and defaults
-to ``[Request.Value]``. It applies the same policies, registered pricers, scenario
-shocks and risk basis as ``context.evaluate(trade, requests)``. Nested contexts
-restore the previous context on exit. Calling ``trade.evaluate`` outside an
-active context scope raises ``RuntimeError``; eager initialization alone does
-not activate a scope. Explicit context evaluation remains available.
+``trade.evaluate(requests=None)`` uses the innermost active context:
 
-Read constructed views inside their active scope. Final scope exit releases
-constructed market data and performs the context's AD cleanup, including when
-an exception propagates. Contexts and scenario stacks are thread-confined;
-enter and exit on the owning thread in reverse order. Scalar results and
-copied result tables can be retained, but an AD-backed curve view should not
-be used after its context or scenario ends.
+- With no requests, it calculates ``[Request.Value]``.
+- It applies the same policies, registered pricers, scenario shocks, and risk
+  basis as ``context.evaluate(trade, requests)``, which you can also call
+  directly.
+- Nested contexts restore the previous context when they exit.
+- Calling it outside a ``with context:`` block raises ``RuntimeError``.
+  ``context.initialize()`` alone does not make a context active.
 
-Public context input setters invalidate dependent construction. Store and
-configuration getters return copies. To change an input, edit the copy and
-assign it back to the context; dependent objects are then rebuilt for the next
-valuation. The contract remains available for comparison across markets.
+Use curves and other built objects only inside the ``with`` block. When the
+outermost block exits, the context releases the market data it built. This
+also happens when an exception is raised. You can keep numbers and result
+tables, but do not use a curve object after its context or scenario ends.
+
+Use each context and scenario on the thread that created it. Exit them in the
+reverse order you entered them.
+
+Each context input has a setter. Getters for stores and configurations return
+copies. To change an input, edit the copy and assign it back to the context.
+The objects that depend on it are rebuilt for the next valuation. The
+instrument itself does not change, so you can value it again under another
+market.
 
 Dates, types, and protocols
 -------------------------------
 
-Financial dates accept the documented ``Date``, ISO text, or Python
-``datetime.date`` forms. ``Date`` arithmetic with ``Period`` or a tenor such as
-``"6M"`` is calendar arithmetic, not business-day adjustment. A ``Calendar``
-supplies that adjustment. ``Schedule`` supports iteration and indexing and
-returns copied dates and regularity flags; coupon accrual conventions are
-separate from schedule generation.
+Dates accept a ``Date``, ISO text, or a Python ``datetime.date``.
 
-The examples use Actual360 or Actual365. ``ActualActual.year_fraction`` splits
-at calendar-year boundaries and includes every complete intervening year.
-``Thirty360US`` adjusts February month-ends independently after adjusting 31sts.
-This ordering differs from common US/NASD/BondBasis rules. Validate
-these conventions against the required contractual dates before using them.
+- Adding a ``Period`` or a tenor such as ``"6M"`` to a ``Date`` moves it on the
+  calendar. It does not adjust for business days; use a ``Calendar`` for that.
+- ``Schedule`` supports iteration and indexing. It returns copies of its dates
+  and of its flags that mark regular periods. Coupon accrual conventions are
+  set separately from the schedule.
 
-Timestamps are different: ``DateTime`` requires offset-aware input, normalizes
-to UTC, and retains native nanoseconds; conversion to Python datetime truncates
-to microseconds. An observation's UTC day is not necessarily its market
-valuation date.
+The examples use Actual360 or Actual365. Two other day counters have rules to
+check before you use them:
 
-Many financial constructors accept typed enums or names, but not every API
-does. ``Shock.shock_type`` and typed calendar/schedule parameters require their
-documented enum values. Parameterized market indices should use factories such
-as ``MarketIndex.equity("SPX")`` or native tagged dictionaries, not display
-labels such as ``"EQ:SPX"``. The reference shows precise accepted forms.
+- ``ActualActual.year_fraction`` splits the period at calendar-year boundaries
+  and includes every complete intervening year.
+- ``Thirty360US`` adjusts 31st days first, then adjusts February month-ends
+  separately. This order differs from the common US/NASD/BondBasis rules.
 
-Native failures generally raise ``QuantSupportError``; Python argument and
-scope checks can instead raise ``TypeError``, ``ValueError``, or
-``RuntimeError``. Use the error context to identify the missing input or incompatible
-convention before changing the market specification.
+Check these conventions against your contract's dates.
+
+Timestamps use ``DateTime``. It requires a time-zone offset, converts to UTC,
+and keeps nanoseconds. Converting to a Python ``datetime`` truncates to
+microseconds. The UTC day of an observation is not always its market valuation
+date.
+
+Many constructors accept either an enum or its name, but not every API does.
+``Shock.shock_type`` and typed calendar and schedule parameters need the
+documented enum values. For indices with parameters, use a factory such as
+``MarketIndex.equity("SPX")`` or a tagged dictionary, not a display label such
+as ``"EQ:SPX"``. The API reference lists the accepted forms.
+
+Library failures usually raise ``QuantSupportError``. Python argument and
+context checks can raise ``TypeError``, ``ValueError``, or ``RuntimeError``.
+Use the error details to find the missing input or the conflicting convention
+before you change the market setup.

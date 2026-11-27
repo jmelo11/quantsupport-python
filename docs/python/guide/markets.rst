@@ -1,28 +1,32 @@
 Constructing and selecting a market
 ===================================
 
-Named index strings use explicit colon tags: ``EQ:SPX``, ``FX:EURUSD``,
-``CREDIT:ACME``, ``COLL:EUR/USD``, and ``OTHER:MyCurve``. Built-in rate
-names such as ``SOFR`` remain case insensitive. Bare custom names and
-parenthesized named forms are rejected. Use these tagged names in quote
-identifiers, for example ``ZeroRate_USD_OTHER:MyCurve_1Y``. Python typed
-constructors and tagged dictionaries retain their existing schemas.
+Index names in strings use a tag and a colon: ``EQ:SPX``, ``FX:EURUSD``,
+``CREDIT:ACME``, ``COLL:EUR/USD``, and ``OTHER:MyCurve``. Built-in rate index
+names such as ``SOFR`` are case insensitive. Custom names without a tag, and
+names in parentheses, are rejected. Use the tagged names in quote identifiers,
+for example ``ZeroRate_USD_OTHER:MyCurve_1Y``. Typed Python constructors and
+tagged dictionaries use their own documented formats.
 
 From observations to curves
 -------------------------------
 
-Curve construction translates observed prices and rates into discount
-factors and forwards. A quote store holds the observations and reference date;
-a curve configuration selects the calibration instruments and numerical
-conventions. The constructed curve can then be queried or used for valuation.
+Building a curve turns observed prices and rates into discount factors and
+forward rates. You need two inputs:
 
-This connection also determines risk reporting. A bootstrapped valuation can
-report sensitivities to its OIS quotes, while a direct zero-rate curve
-reports sensitivities to the rates supplied at its pillars.
+- a quote store, which holds the observed quotes and the reference date;
+- a curve configuration, which chooses the calibration instruments and the
+  numerical conventions.
 
-The example below bootstraps a USD SOFR curve from a deposit and OIS quotes.
-The identifiers encode instrument and market conventions understood by the
-native quote parser. They are not arbitrary maturity labels.
+You can then query the built curve or use it for valuation.
+
+The inputs you choose also decide what sensitivities are reported against. A
+bootstrapped curve reports sensitivities to its OIS quotes. A curve given
+directly as zero rates reports sensitivities to those rates.
+
+The example below bootstraps a USD SOFR curve from a deposit quote and OIS
+quotes. Each identifier encodes the instrument and its market conventions, so
+it must follow the library's quote format. It is not a free-form label.
 
 .. code-block:: python
    :name: guide-python-bootstrap
@@ -59,34 +63,35 @@ native quote parser. They are not arbitrary maturity labels.
        )
        print(forward)
 
-``nodes()`` reports interpolation dates and discount factors; ``pillars()``
-reports labelled market inputs where available. Together they show how the
-curve is represented and which inputs determine its sensitivities.
-Construction may also need other projection or collateral curves. Supply
-those dependencies under their configured market indices.
+``nodes()`` returns the interpolation dates and their discount factors.
+``pillars()`` returns the labeled market inputs, where available. Together they
+show how the curve is stored and which inputs drive its sensitivities.
 
-For a simple forward under the curve's time basis,
+Building a curve may also need other projection or collateral curves. Supply
+those curves under the market indices named in the configuration.
+
+The simple forward rate between :math:`T_1` and :math:`T_2`, using the curve's
+time basis, is
 
 .. math::
 
    F(t;T_1,T_2)
    = \frac{D(t,T_1)/D(t,T_2)-1}{\tau(T_1,T_2)}.
 
-Changing the day counter, compounding convention, or coupon schedule changes
-the interpretation of a rate even when the displayed number is unchanged.
-Log-linear discount-factor interpolation preserves a different curve shape
-from linear zero-rate interpolation. Extrapolation is a modeling choice and
-must be recorded explicitly.
+The same number means a different rate under a different day counter,
+compounding convention, or coupon schedule. Log-linear interpolation of
+discount factors gives a different curve shape from linear interpolation of
+zero rates. Extrapolation is a modeling choice; set it explicitly and record it.
 
-The bootstrap uses native OIS calibration instruments with compounded
-overnight coupons. Python's standalone ``Swap`` uses regular single-fixing
-coupons; a standalone ``OvernightIndexSwap`` wrapper is currently unavailable.
+The bootstrap uses OIS calibration instruments with compounded overnight
+coupons. The Python ``Swap`` class uses ordinary coupons with one fixing per
+period. Python has no standalone ``OvernightIndexSwap`` class.
 
 Direct curve quotes
 -------------------
 
-Discount factors and zero rates can also be supplied directly in ``QuoteStore``.
-Reference their identifiers in ``CurveConfiguration.quotes`` with the default
+You can also put discount factors or zero rates directly in a ``QuoteStore``.
+List their identifiers in ``CurveConfiguration.quotes`` and keep the default
 construction rule:
 
 .. code-block:: python
@@ -105,38 +110,46 @@ construction rule:
    with qs.PricingContext(direct_quotes, [direct_spec]) as context:
        print(context.curve("SOFR").discount_factor("2027-02-24"))
 
-Use ``DiscountFactor_CCY_Index_Pillar`` for dimensionless factors, or
-``ZeroRate_CCY_Index_Pillar[_Compounding[_Frequency]]`` for annual decimal
-zero rates. ``Pillar`` is a tenor such as ``1Y`` or an ISO date. Zero rates
-default to ``Continuous`` compounding and ``Annual`` frequency; for example,
-``ZeroRate_USD_SOFR_1Y_Compounded_Semiannual`` quotes a semiannually compounded
-annual rate. The enclosing configuration supplies the day counter,
-interpolator, and extrapolation setting. Interpolation applies to factors for
-discount-factor quotes and to rates for zero-rate quotes.
+Identifier formats:
 
-Direct pillars are sorted by date. Each curve uses one direct quote family,
-currency, and rate convention, with identifiers matching its market index.
-Do not mix direct observations with calibration instruments in one curve.
-Dates must be distinct and on or after the reference date. Discount factors
-must be finite and positive; the reference-date factor is fixed at one and
-is inserted automatically. A supplied reference-date factor must equal one,
-and a discount curve needs at least one future pillar.
+- ``DiscountFactor_CCY_Index_Pillar`` for discount factors, which have no units.
+- ``ZeroRate_CCY_Index_Pillar[_Compounding[_Frequency]]`` for zero rates, as
+  annual decimals.
 
-Direct quotes use the selected Mid/Bid/Ask level and retain their original
-identifiers for scenarios and sensitivities. They can be components of
-composite curves or dependencies of calibrated curves. All observed values stay
-in ``QuoteStore``; configuration contains identifiers and construction conventions.
+``Pillar`` is a tenor such as ``1Y`` or an ISO date. Zero rates use
+``Continuous`` compounding and ``Annual`` frequency unless the identifier says
+otherwise. For example, ``ZeroRate_USD_SOFR_1Y_Compounded_Semiannual`` is an
+annual rate with semiannual compounding. The curve configuration sets the day
+counter, interpolator, and extrapolation. Discount-factor curves interpolate
+the factors; zero-rate curves interpolate the rates.
+
+Rules for direct quotes:
+
+- Pillars are sorted by date.
+- Each curve uses one kind of direct quote, one currency, and one rate
+  convention. Identifiers must match the curve's market index.
+- Do not mix direct quotes and calibration instruments in one curve.
+- Dates must be different from each other and on or after the reference date.
+- Discount factors must be finite and positive.
+- The discount factor at the reference date is one and is added for you. If
+  you supply it, it must equal one.
+- A discount curve needs at least one pillar after the reference date.
+
+Direct quotes use the selected quote level (Mid, Bid, or Ask). They keep their
+identifiers, so scenarios and sensitivities refer to them by name. A direct
+curve can be a component of a composite curve or an input to a calibrated
+curve. All quote values stay in the ``QuoteStore``; the configuration holds only
+identifiers and conventions.
 
 Composite curves and standalone term structures
 -----------------------------------------------
 
-The separate ``ZeroRateTermStructure`` and ``TenorBasedZeroRateTermStructure``
-classes are reusable numeric term structures. Their defaults are Actual365,
-Continuous, Annual, Linear, and disabled extrapolation. A configuration's
-defaults are different: Actual360, LogLinear, and enabled extrapolation.
-Choose conventions rather than transferring a number between these APIs and
-assuming identical behavior. A tenor curve can be serialized as the equivalent
-dated zero-rate curve.
+``ZeroRateTermStructure`` and ``TenorBasedZeroRateTermStructure`` are
+standalone zero-rate curves that you can use on their own. Their defaults are
+Actual365, Continuous, Annual, Linear, and no extrapolation. A curve
+configuration has different defaults: Actual360, LogLinear, and extrapolation
+enabled. Set the conventions explicitly when you move a number between these
+APIs. A tenor-based curve can be saved as the equivalent curve with dates.
 
 A composite curve multiplies two component discount factors:
 
@@ -145,97 +158,110 @@ A composite curve multiplies two component discount factors:
    D_{\mathrm{composite}}(t,T)
    =D_{\mathrm{base}}(t,T)D_{\mathrm{spread}}(t,T).
 
-Continuous zero rates add when their time bases agree. This is a
-discount-factor composition, not an arithmetic average of quoted yields.
-Configure it with
-``CurveConfiguration.composite(market_index=..., base_index=..., spread_index=...)`` and supply
-both component configurations. Dependencies are resolved by construction;
-cycles and missing parents are errors.
+When both components use the same time basis, their continuous zero rates
+add. The curves are combined through discount factors; quoted yields are not
+averaged.
 
-For a loan funding experiment, a useful specification is a benchmark curve, an
-quoted spread curve identified by ``MarketIndex.other("FUNDINGSPREAD")``,
-and their composite. Choose the composite through the fixed-income discount
-policy rather than adding a discount index to the loan contract.
+Configure a composite curve with
+``CurveConfiguration.composite(market_index=..., base_index=..., spread_index=...)``
+and also supply the configurations of both components. The components are
+built first. A circular dependency or a missing component raises an error.
+
+For example, to test loan funding, configure a benchmark curve, a quoted spread
+curve identified by ``MarketIndex.other("FUNDINGSPREAD")``, and their
+composite. Select the composite through the fixed-income discount policy. Do
+not add a discount index to the loan contract.
 
 Quotes, fixings, FX, and policies
 -------------------------------------
 
-Quote levels are selected with ``quote_level=Level.Mid``, ``Bid``, or ``Ask``.
-The default is Mid. Every quote consumed by construction or calibration must
-contain the selected side; missing Bid/Ask values do not fall back to Mid.
-Quote units depend on the instrument: a decimal rate, a futures price, and a
-volatility quote are not transformed into a common percentage convention.
+**Quote levels.** Choose the quote side with ``quote_level=Level.Mid``,
+``Bid``, or ``Ask``. The default is Mid. Every quote used to build or calibrate
+the market must have the selected side. A missing Bid or Ask value is an error;
+Mid is not used instead.
 
-Historical fixings are separate observations. ``FixingStore.add(index, date,
-value)`` records a published fixing, while a forward curve projects an
-unobserved future reset. A contract that needs a past fixing should fail when
-that observation is missing; a zero fixing is not an acceptable substitute.
-Read the product's fixing calendar and lag independently of its payment
+Quote units depend on the instrument. Decimal rates, futures prices, and
+volatility quotes are each used in their own units; they are not converted to
+a common percentage.
+
+**Fixings.** Past fixings are stored separately from quotes.
+``FixingStore.add(index, date, value)`` records a published fixing. A forward
+curve projects future resets that have not been observed. If a contract needs
+a past fixing that is missing, valuation fails; a zero fixing is not used
+instead. A product's fixing calendar and lag are separate from its payment
 schedule.
 
-Supply verified historical observations. If the source has gaps, handle them
-through an explicitly validated preprocessing policy. The native
-``fill_missing_fixings`` routine uses reversed interpolation coordinates and
-is unavailable through Python.
+Supply checked historical fixings. If your source has gaps, fill them with a
+method you have validated before loading them. Python does not offer the
+native ``fill_missing_fixings`` routine, which uses reversed interpolation
+coordinates.
 
-``FxStore`` stores rates in quote-currency units per base-currency unit.
-For example ``{"base": "EUR", "quote": "USD", "rate": 1.1}`` means
-1 EUR = 1.1 USD. Direct, inverse, and triangulated spot lookup are available.
-Native Rust pricers use this store to convert monetary PVs and sensitivities to
-``context.base_currency``, including FX conversion risk. Python's
-``PricingContext.evaluate`` returns those native results.
-Cashflow reports retain their original payment currencies. Missing conversion
-paths raise an error when the native valuation requires conversion.
+**FX rates.** ``FxStore`` holds each rate as units of the quote currency per one
+unit of the base currency. For example,
+``{"base": "EUR", "quote": "USD", "rate": 1.1}`` means 1 EUR = 1.1 USD. Spot
+lookups work directly, inversely, and through a third currency.
 
-``SingleCurveCSADiscountPolicy`` defines collateral currency and remuneration
-index for curve construction and derivative valuation. A different cashflow
-currency may require its collateral-adjusted curve. ``FixedIncomeDiscountPolicy``
-maps currencies to bond/loan discount curves and controls whether an instrument
-index takes precedence. ``CsaTerms`` instead describes one netting agreement's
-credit, funding, and collateral terms. These three choices answer different
-financial questions.
+Built-in pricers use this store to convert PVs and sensitivities to
+``context.base_currency``, and they include the FX conversion risk.
+``PricingContext.evaluate`` returns these converted results. Cashflow reports
+keep the original payment currencies. If a valuation needs a conversion that
+the store cannot provide, it raises an error.
 
-When comparing valuations, use matching pricers, discount policies and reporting
-currencies. A common base currency alone is insufficient to establish those
-assumptions.
+**Discount policies.** Three settings answer different questions:
+
+- ``SingleCurveCSADiscountPolicy`` sets the collateral currency and the index
+  that pays interest on collateral. It is used to build curves and value
+  derivatives. Cashflows in another currency may need that currency's
+  collateral-adjusted curve.
+- ``FixedIncomeDiscountPolicy`` maps each currency to a discount curve for bonds
+  and loans. It also controls whether an instrument's own index takes
+  precedence.
+- ``CsaTerms`` describes the credit, funding, and collateral terms of one
+  netting agreement.
+
+To compare two valuations, use the same pricers, discount policies, and
+reporting currency. Sharing a base currency is not enough.
 
 Volatility and calibration inputs
 ---------------------------------
 
-A volatility configuration identifies quote inputs, smile coordinates, and
-construction policies. A constructed ``VolatilitySurface`` or
-``VolatilityCube`` is a read-only context view, not a replacement quote store.
-Rate strikes are annual decimal rates; equity and FX strikes are absolute
-prices under their own currency conventions.
+A volatility configuration lists the input quotes, the smile coordinates,
+and how to build the surface. A built ``VolatilitySurface`` or
+``VolatilityCube`` is a read-only object you can query inside the context. It
+does not replace the quote store. Rate strikes are annual decimal rates.
+Equity and FX strikes are prices in their own currency.
 
-The configured volatility type matters: a Black lognormal volatility is not a
-normal volatility or an absolute short-rate sigma. Inspect ``volatility_type``
-and ``smile_type`` before interpreting a surface lookup. For a cube, expiry
-and underlying tenor are separate coordinates.
+Check the volatility type. A Black (lognormal) volatility, a normal volatility,
+and an absolute short-rate sigma are different quantities. Read
+``volatility_type`` and ``smile_type`` before you use a surface value. In a
+cube, expiry and underlying tenor are separate coordinates.
 
-Surface and cube construction supports sparse slices and singleton axes.
-The default extrapolation policy is ``Reject``, so each query must lie within
-the selected slices. An ATM calibration strike can fall outside a smile even
-when its expiry is covered. Choose an in-domain basket or an explicit ``Flat``
-policy consistent with the intended boundary behavior.
+Surfaces and cubes can have sparse slices and axes with a single point. The
+default extrapolation policy is ``Reject``, so every query must fall within the
+available slices. An at-the-money calibration strike can fall outside a smile
+even when its expiry is covered. Either choose a calibration basket inside the
+surface, or set the ``Flat`` policy if that boundary behavior is what you want.
 
-``PricerConfiguration`` selects an instrument pricing implementation and
-index-specific model assignments. ``SimulationConfiguration`` describes a
-generated simulation. Calibrated Hull–White/LGM parameters consume the selected
-quote side and configured volatility source. A calibrated sigma schedule is an
-output of that fit; fixed ``sigma`` is an input in absolute short-rate units,
-not an option-market volatility percentage.
+``PricerConfiguration`` chooses the pricing method for an instrument type and
+the model for each index. ``SimulationConfiguration`` describes a simulation.
+Calibrated Hull–White and LGM models use the selected quote side and the
+configured volatility source. A calibrated sigma schedule is a result of the
+fit. A fixed ``sigma`` is an input in absolute short-rate units, not an option
+volatility percentage.
 
 Native serialization
 --------------------
 
-Configuration ``from_dict`` returns one configuration; ``from_dict_list``
-returns a list and accepts a native object, array, or single-key
-array wrapper where documented. Product ``from_dict`` instead calls the
-product constructor using keyword terms. Do not confuse these two schemas.
+Configurations and products use different dictionary formats:
 
-Read files with Python's ``json.load`` and pass the decoded data to the appropriate
-dictionary constructor:
+- For a configuration, ``from_dict`` returns one configuration.
+  ``from_dict_list`` returns a list. Where documented, it accepts a single
+  object, a list, or a list wrapped in an object with one key.
+- For a product, ``from_dict`` calls the product constructor with the
+  dictionary's keys as keyword arguments.
+
+Read files with Python's ``json.load`` and pass the data to the matching
+``from_dict`` method:
 
 .. code-block:: python
 
@@ -246,17 +272,18 @@ dictionary constructor:
    with open("curve_specs.json", encoding="utf-8") as stream:
        curves = qs.CurveConfiguration.from_dict_list(json.load(stream))
 
-Parameterized native indices use tagged objects such as ``{"Equity": "SPX"}``, ``{"Credit": "ACME"}``, or
-``{"FxPair": ["EUR", "USD"]}``; typed Python factories avoid reliance on
-display-label parsing.
+In dictionaries, indices with parameters use tagged objects such as
+``{"Equity": "SPX"}``, ``{"Credit": "ACME"}``, or ``{"FxPair": ["EUR", "USD"]}``.
+In Python code, prefer the typed factories, such as ``MarketIndex.equity("SPX")``,
+over display labels.
 
 Historical repricing without look-ahead
 ---------------------------------------
 
-A historical snapshot captures one coherent market: quotes and construction,
-volatility, simulation, and pricer inputs. It is selected by observation
-timestamp, while its quote reference date remains the valuation date.
-The following independent example makes that distinction explicit.
+A historical snapshot records one complete market: its quotes and the curve,
+volatility, simulation, and pricer configurations. You select a snapshot by the
+time it was recorded. Its valuation date is the reference date of its quotes.
+The example below shows the difference; it does not depend on earlier examples.
 
 .. code-block:: python
    :name: guide-python-history
@@ -292,27 +319,34 @@ The following independent example makes that distinction explicit.
        assert str(historical.evaluation_date) == "2026-02-24"
        assert historical.snapshot_timestamp == selected.timestamp
 
-``Previous`` is the default and never chooses a later observation. ``Exact``
-requires equality; ``Closest`` may choose a future market and resolves ties
-to the earlier timestamp. Duplicate UTC instants are errors even if the input
-strings use different offsets. Inspect the matched timestamp rather than
-reporting the requested timestamp as though it were observed data.
+Selection rules:
 
-Snapshots rebuild from construction inputs rather than serializing runtime
-curves, caches, or AD state. Zero rates and discount factors use the selected
-quote side, just like calibration instruments; FX spots are side-independent. Fixings are supplied separately to ``archive.pricing_context(selector, fixings=...)``; there is
-no automatic publication-vintage filtering. For a historical backtest, supply
-the fixing set that was known at each observation instant.
+- ``Previous`` (the default) picks the latest snapshot at or before the
+  requested time. It never picks a later one.
+- ``Exact`` requires the times to match.
+- ``Closest`` can pick a later snapshot. On a tie it picks the earlier one.
 
-Continue with :doc:`valuation` to choose product-specific requests and models,
-or study the :doc:`curve notebook <../studies/notebooks/curves>` for a larger
-calibration investigation.
+Two snapshots at the same UTC time are an error, even if their time strings use
+different offsets. Report the time of the selected snapshot, not the time you
+asked for.
+
+A snapshot stores the inputs and rebuilds the market from them when you use
+it. Zero rates and discount factors use the selected quote side, like
+calibration instruments. FX spots are the same on every side.
+
+Pass fixings separately with ``archive.pricing_context(selector, fixings=...)``.
+They are not filtered by publication date. For a historical backtest, supply
+only the fixings that were known at each snapshot time.
+
+Next, read :doc:`valuation` to choose requests and models for each product,
+or open the :doc:`curve notebook <../studies/notebooks/curves>` for a larger
+calibration example.
 
 Forward market contexts
 -----------------------
 
-Generate a normal pricing context at a future date from today's constructed
-market and explicit advancement assumptions::
+You can create an ordinary pricing context for a future date from today's
+market. State how the market should move forward::
 
     assumptions = qs.ForwardMarketConfiguration(
         "2027-01-05", volatility_roll="ConstantTenor", fixing_roll="Project"
@@ -321,25 +355,35 @@ market and explicit advancement assumptions::
     with future:
         result = future.evaluate(trade, requests=["Value", "Sensitivities"])
 
-The result owns generated quotes, forward FX spots and projected intervening
-fixings. Its evaluation date is the horizon. Configured curves, volatility grids,
-models and simulations use ordinary construction. An active source ``Scenario``
-is included in quote generation. Scenarios entered on ``future`` instead shock
-the horizon market.
+The new context has its own generated quotes, forward FX spots, and projected
+fixings for the dates in between. Its evaluation date is the horizon date. Its
+curves, volatility grids, models, and simulations are built the usual way. If a
+``Scenario`` is active on the source context, the generated quotes include it.
+A scenario entered on ``future`` shocks the horizon market instead.
 
-``curve_roll`` accepts ``ImpliedForward`` or ``ConstantTenor``. Volatility accepts
-``ConstantTenor`` or ``ForwardVariance``; forward variance is a deterministic
-smile-coordinate convention and rejects negative increments. ``fixing_roll``
-accepts ``Project`` or ``Preserve``. Full per-index overrides, dated-quote
-replacements and runtime export grids are available through ``from_dict()`` and
-``to_dict()``. ``future.market_advancement_details`` identifies the source and assumptions.
+Options:
 
-Sensitivities refer to generated horizon inputs. To measure sensitivity to
-source inputs, shock the source and regenerate the forward context. Keep the
-forward fixing store alongside a serialized market snapshot for replay, using
-``future.fixings.to_dict()`` and ``qs.FixingStore.from_dict()``. Horizon spots
-advance even when intervening fixings use ``Preserve``.
+- ``curve_roll``: ``ImpliedForward`` or ``ConstantTenor``.
+- ``volatility_roll``: ``ConstantTenor`` or ``ForwardVariance``.
+  ``ForwardVariance`` removes the variance that has elapsed, at the same smile
+  coordinate. It raises an error if a forward variance increment is negative.
+- ``fixing_roll``: ``Project`` or ``Preserve``.
 
-The context's optional ``dividend_curves`` input accepts direct curve specifications.
-``DividendDiscountFactor_USD_EQ:AAPL_1Y`` is a dividend discount-factor quote for
-an equity index; the distinct prefix separates it from financing discount factors.
+``from_dict()`` and ``to_dict()`` also give access to per-index overrides,
+replacement quotes for given dates, and export grids.
+``future.market_advancement_details`` shows the source market and the
+assumptions used.
+
+Sensitivities in the future context are with respect to its generated horizon
+inputs. To measure sensitivity to today's inputs, shock the source context and
+create the future context again. FX spots move to the horizon even when
+fixings use ``Preserve``.
+
+To replay a future market later, save its fixings with
+``future.fixings.to_dict()`` next to a saved market snapshot, and load them
+with ``qs.FixingStore.from_dict()``.
+
+Dividend curves are optional. Pass direct curve configurations as the
+context's ``dividend_curves`` input. For example,
+``DividendDiscountFactor_USD_EQ:AAPL_1Y`` is a dividend discount-factor quote
+for an equity. Its prefix keeps it apart from financing discount factors.

@@ -3,9 +3,8 @@ QuantSupport for Python
 
 Binding version |release| uses core revision |core_revision|.
 
-This site documents the Python package released from this repository: its
-installation, financial conventions, API, examples and troubleshooting.
-All reference pages are generated from this repository's own declarations.
+This site documents the QuantSupport Python package. It covers installation,
+financial conventions, the API, example notebooks, and troubleshooting.
 
 .. toctree::
    :maxdepth: 2

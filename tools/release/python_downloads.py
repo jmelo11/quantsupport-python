@@ -239,19 +239,20 @@ nav { margin-bottom: 2rem; }
 <a href="#editor-support">Autocomplete and linting setup</a>
 </nav>
 <p>Choose your operating system, architecture and Python version below.
-Before using a folder ZIP, install runtime dependencies separately with
+Both wheels and folder ZIPs contain the compiled library, the Python modules,
+the type stubs (<code>.pyi</code>) and the <code>py.typed</code> marker.
+Keep all of these files together.</p>
+<p>To use a folder ZIP, install pandas with
 <code>python -m pip install pandas</code>, extract the ZIP and add its
-<code>site-packages</code> directory to Python's search path.
-Both formats include the native extension, Python modules, method declarations
-(<code>.pyi</code>) and the <code>py.typed</code> marker. Keep the whole package together.</p>
+<code>site-packages</code> directory to Python's search path.</p>
 """
         + tables
         + """
 <h2 id="editor-support">Autocomplete and linting for folder ZIPs</h2>
-<p>Adding a directory with <code>sys.path.insert</code> enables runtime imports.
-Editors and static checkers also need to locate that directory to show methods,
-parameter hints and type errors. Select the same Python interpreter in your
-editor that runs your code.</p>
+<p>Adding the directory with <code>sys.path.insert</code> lets your code import
+the package. Editors and type checkers also need the directory to show methods,
+parameter hints and type errors. In your editor, select the same Python
+interpreter that runs your code.</p>
 <p>For VS Code/Pylance, add the extracted directory to your workspace's
 <code>.vscode/settings.json</code> (merge with existing settings):</p>
 <pre><code>{

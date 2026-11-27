@@ -1,11 +1,16 @@
 # Working in Python
 
-The Python package provides access to QuantSupport's native instruments,
-market construction, valuation and risk calculations. Build a contract and
-trade, configure its market, then evaluate the position inside a pricing
-context. Results are available as scalar properties and pandas tables.
+The Python package gives you QuantSupport's instruments, market building,
+valuation, and risk calculations. The basic workflow is:
 
-Classes can be imported from domain packages or from the package root:
+1. Build a contract and a trade (your position in it).
+2. Configure the market.
+3. Value the trade inside a pricing context.
+
+Results are returned as numbers and pandas tables.
+
+You can import classes from their domain package or from the package root.
+Both give the same class:
 
 ```python
 import quantsupport as qs
@@ -16,10 +21,9 @@ assert Trade is qs.Trade
 
 ## A complete market and valuation
 
-A small store of zero-rate quotes makes the example independent of external
-data files. Its input rates are continuously compounded annual
-decimals. Configuration remains serializable; the live curve is constructed
-when pricing requests it.
+This example uses a small set of zero-rate quotes, so it needs no data files.
+The rates are continuously compounded annual decimals. The curve configuration
+only describes the curve; the curve itself is built when a valuation needs it.
 
 ```python
 import quantsupport as qs
@@ -51,41 +55,48 @@ with context:
     print(result.sensitivities)
 ```
 
-An instrument contains the contract; `Trade` supplies the position date,
-direction and supported notional overrides. Bond trades additionally require
-a `BondPricingAnchor`. Native dispatch chooses the compatible pricer, using
-typed context-level pricer configurations for model-dependent choices.
-Python-defined pricers can also be registered explicitly.
+- An instrument holds the contract terms.
+- A `Trade` adds the trade date, the direction, and optional notional
+  overrides. Bond trades also need a `BondPricingAnchor`.
+- The context picks a suitable built-in pricer for each trade. When the choice
+  depends on a model, set it with the context's pricer configurations.
+- You can also register pricers written in Python.
 
 ## Context lifetime and mutability
 
-Entering `with context:` validates configuration and activates the pricing
-scope. It does not eagerly build the entire market. Requests construct and
-cache the dependencies they consume. Explicit `context.initialize()` performs
-eager construction when that is the intended workflow.
+Entering `with context:` checks the configuration and makes the context
+active. It does not build the whole market at once. Each calculation builds and
+caches only the curves and other objects it needs. Call `context.initialize()`
+if you want to build everything up front.
 
-`position.evaluate()` uses the innermost active context and requests `Value`
-by default. Supply a request sequence to select other measures. It follows
-scenarios, registered pricers and risk views in that context. Nested scopes
-restore the previous context on exit; calling it without an active scope raises
-`RuntimeError`. `context.evaluate(position, requests)` remains available.
+`position.evaluate()` uses the innermost active context:
 
-Exiting the outer scope releases the context's constructed market and its AD
-state, including on exceptions. Keep returned results for reporting, not live
-market views whose validity depends on that scope. Inputs have explicit
-setters: assigning a replacement collection invalidates dependent state.
-Collection properties return copies, so edit-and-reassign rather than assume
-an in-place change has reached the native context.
+- By default it requests `Value`. Pass a list of requests to get other measures.
+- It applies the context's scenarios, registered pricers, and risk views.
+- Calling it with no active context raises `RuntimeError`.
+- Nested `with` blocks restore the previous context when they exit.
 
-Contract and result properties are generally read-only. Operations such as
-evaluation, curve queries and serialization are methods. Date-like inputs
-accept the forms documented for their signatures, commonly `qs.Date`,
-`datetime.date` and ISO date strings. Enum strings are conveniences at specific
-conversion boundaries, not permission to invent new market identities.
+You can also call `context.evaluate(position, requests)` directly.
+
+When the outermost `with` block exits, the context releases the market objects
+it built. This also happens when an exception is raised. Keep the returned
+results for reporting, but do not use curves or other market objects from the
+context after the block ends.
+
+Context inputs have setters. Properties that return collections return copies,
+so changing the copy does not change the context. Edit the copy and assign it
+back; the context then rebuilds whatever depends on that input.
+
+Contract and result properties are generally read-only. Calculations such as
+evaluation, curve queries, and serialization are methods. Date arguments
+usually accept `qs.Date`, `datetime.date`, or an ISO date string; each
+signature lists the accepted forms. Where an argument accepts an enum name as
+a string, use one of the documented names. A string cannot define a new
+market index.
 
 ## Scenarios and historical markets
 
-Temporary shocks belong in an independent scenario scope:
+Apply temporary market shocks inside a scenario block:
 
 ```python
 scenario = qs.Scenario(shocks=[
@@ -95,9 +106,11 @@ with context, scenario:
     stressed = position.evaluate([qs.Request.Value])
 ```
 
-The base inputs remain unchanged. Scenarios compose in entry order and rebuild
-only requested affected dependencies. To reprice against an observed historical
-market, select a complete snapshot from a market archive:
+The base inputs are not changed. Nested scenarios apply in the order they are
+entered. Only the affected objects that a calculation needs are rebuilt.
+
+To value a position against a past market, select a complete snapshot from a
+market archive:
 
 ```python
 archive = qs.MarketSnapshotStore()
@@ -114,32 +127,43 @@ with archive.pricing_context(selector) as historical:
     print(historical.evaluate(position, [qs.Request.Value]).price)
 ```
 
-The observation instant and market business date are distinct. Selection does
-not roll curves to the requested date. Archives retain construction inputs,
-not runtime AD graphs, fixing publication vintages, custom Python pricers or
-Python-only policy registrations. Supply those separately as appropriate.
+The time the snapshot was recorded and the market's valuation date are
+different values. Selecting a snapshot does not roll its curves forward to the
+requested time.
+
+An archive stores the inputs needed to rebuild each market. It does not store
+fixing publication dates, custom Python pricers, or policies registered only in
+Python. Supply those separately when you need them.
 
 ## Scripts and portfolio workflows
 
-`context.evaluate_script` evaluates a `ScriptedProduct` or corresponding
-dictionary through native rate models and returns averaged script variables.
-Call it inside an entered context or after explicit initialization, with a
-positive path count. Required discount and forward indices need configured
-rate models; absent models do not imply zero-volatility dynamics.
-Its `result_variable` identifies the target for derivative/control processing;
-it does not filter the returned dictionary. Models are resolved from pricer
-configuration, then simulation configuration, with script model overrides.
-Hull–White settings map to the equivalent LGM rate representation.
+`context.evaluate_script` runs a `ScriptedProduct`, or the equivalent
+dictionary, with rate models and returns the average value of each script
+variable.
 
-The discount index needs a configured model and constructed curves; a script
-outside the base currency needs an explicit discount index. This service does
-not expose arbitrary FX/equity factors, custom correlations, raw paths, or
-scripted cashflow/sensitivity tables. Native-trade exposure/XVA is available
-through the separate context XVA workflow. Use the Rust interfaces when the
-workflow needs those additional facilities.
+- Call it inside an active context, or after `context.initialize()`.
+- Use a positive number of paths.
+- Configure a rate model for every discount and forward index the script uses.
+  A missing model is an error; it is not treated as zero volatility.
+- `result_variable` names the variable used for derivatives and control-variate
+  adjustment. It does not limit which variables are returned.
+- Models are taken from the pricer configuration, then from the simulation
+  configuration. Models defined in the script override both.
+- Hull–White settings are converted to the equivalent LGM model.
+- The discount index needs a configured model and built curves. A script in a
+  currency other than the base currency needs an explicit discount index.
 
-Native failures use `QuantSupportError`; invalid Python inputs can also raise
-`TypeError` or `ValueError`. The [executable studies](studies/index.rst) develop
-complete applications. The [user guide](guide/index.rst) develops Python
-workflows, and the [API reference](../autoapi/quantsupport/index.rst) provides
-exact declarations.
+Script evaluation supports rate models only. It does not provide FX or equity
+factors, custom correlations, raw paths, or cashflow and sensitivity tables.
+For exposure and XVA on built-in trades, use the context's XVA workflow. For
+the other features, use the Rust library.
+
+Library failures raise `QuantSupportError`. Invalid Python inputs can also
+raise `TypeError` or `ValueError`.
+
+Next steps:
+
+- The [user guide](guide/index.rst) explains each workflow.
+- The [example notebooks](studies/index.rst) build complete applications.
+- The [API reference](../autoapi/quantsupport/index.rst) lists every class and
+  method.

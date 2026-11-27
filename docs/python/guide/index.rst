@@ -1,17 +1,20 @@
 Python user guide
 =================
 
-A Python valuation begins with a contract, a position and a market. The
-contract defines the payments, the trade records the position held, and the
-market supplies quotes, curves and historical observations. A pricer combines
-these inputs to calculate the requested results.
+A valuation in QuantSupport needs three things:
 
-This guide builds that workflow using explicit dates and small in-memory
-markets. It explains the conventions needed to interpret prices and
-sensitivities, then develops product-specific valuation and risk calculations.
-The :doc:`computational studies <../studies/index>` provide larger examples,
-and the :doc:`API reference <../../autoapi/quantsupport/index>` describes
-individual classes, methods and accepted argument types.
+- a **contract**, which defines the payments;
+- a **trade**, which records the position you hold in that contract;
+- a **market**, which supplies quotes, curves, and past fixings.
+
+A pricer combines these inputs to calculate the results you request.
+
+This guide builds that workflow with fixed dates and small in-memory markets.
+It first explains the conventions you need to read prices and sensitivities.
+It then covers valuation and risk for specific products. The
+:doc:`example notebooks <../studies/index>` show larger examples, and the
+:doc:`API reference <../../autoapi/quantsupport/index>` describes each class,
+method, and accepted argument type.
 
 .. toctree::
    :maxdepth: 2
@@ -24,13 +27,17 @@ individual classes, methods and accepted argument types.
 Reading path
 ------------
 
-Begin with :doc:`first-valuation` for installation, position direction,
-result units and context lifetime. Continue
-with :doc:`markets` before changing curve or calibration assumptions.
-:doc:`valuation` distinguishes instrument-specific quotation and model choices;
-:doc:`risk` develops scenario checks, netting, and extension interfaces.
+#. :doc:`first-valuation`: installation, position direction, result units,
+   and how long a pricing context keeps its market.
+#. :doc:`markets`: curves, market data, and calibration. Read it before you
+   change curve or calibration settings.
+#. :doc:`valuation`: quotation and model choices for each product type.
+#. :doc:`risk`: scenario checks, netting, XVA, and writing your own pricers.
 
-Python 3.9 or later is required by the package. The documentation build uses
-Python 3.11 or later and does not need the native binding. Running the examples
-does need the binding and pandas; simulation studies additionally use the
-dependencies described with their canonical notebooks.
+Requirements:
+
+- The package needs Python 3.9 or later.
+- The documentation build needs Python 3.11 or later. It does not need the
+  compiled package.
+- The examples need the compiled package and pandas. Simulation notebooks list
+  any extra dependencies themselves.

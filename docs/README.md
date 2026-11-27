@@ -1,7 +1,8 @@
 # Build the Python documentation
 
-With stable Rust and Python installed, run from this repository root. These are
-the same guide and reference checks used by the Documentation workflow:
+You need stable Rust and Python. Run these commands from the repository root.
+They are the same guide and reference checks that the Documentation workflow
+runs:
 
 ```sh
 python -m pip install -r docs/requirements.txt "maturin>=1.5,<2.0"
@@ -11,12 +12,24 @@ python -m unittest discover -s tools/tests -p test_reference.py -v
 python -m sphinx -W -b html docs docs/_build/html
 ```
 
-The site is published at https://jmelo11.github.io/quantsupport-python/ by this
-repository's Documentation workflow. API declarations are read from local type
-stubs; canonical notebooks are rendered with their saved outputs. Executable
-guide checks use the wheel built from this checkout. A rendering-only preview
-can run the Sphinx command without building or installing the extension.
-Only this repository's interface is built. Documentation deployment follows a
-successful local Release workflow and uses its exact source tag. Pull requests
-and pushes validate documentation; manual runs can select a published tag and
-optionally a newer documentation revision for corrections.
+To preview the pages only, run the last command on its own. You do not need to
+build or install the package for that.
+
+## How the site is built
+
+- The API reference is generated from the package's type stubs (`.pyi` files).
+- Example notebooks are shown with their saved outputs; they are not run during
+  the build.
+- The guide examples are run against the wheel built from this checkout.
+- The site covers only the Python package.
+
+## Publishing
+
+This repository's Documentation workflow publishes the site at
+https://jmelo11.github.io/quantsupport-python/.
+
+- Pull requests and pushes build and check the documentation.
+- After a successful Release workflow, the site is deployed from that
+  release's source tag.
+- To correct published pages, run the workflow manually. Select a published
+  tag and, optionally, a newer documentation revision.

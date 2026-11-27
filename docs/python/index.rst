@@ -1,16 +1,20 @@
 Python
 ======
 
-`Download Python packages <https://jmelo11.github.io/quantsupport-python/python/downloads.html>`_
-as folder ZIPs or wheels. Choose the package for your operating system,
-architecture and Python version. Folder ZIPs contain only QuantSupport; install
-dependencies separately with ``python -m pip install pandas``.
+The QuantSupport Python package prices financial instruments and measures their
+risk. The basic workflow is:
 
-The Python package provides native QuantSupport instruments, market
-construction, valuation and risk calculations. Define the contract and position,
-configure the market, then request values, cashflows or sensitivities from a
-pricing context. The user guide develops this workflow with complete examples;
-the studies apply it to larger quantitative finance calculations.
+#. Define the contract and the position you hold.
+#. Configure the market.
+#. Ask a pricing context for values, cashflows, or sensitivities.
+
+The user guide walks through this workflow with complete examples. The example
+notebooks apply it to larger quantitative finance problems.
+
+`Download Python packages <https://jmelo11.github.io/quantsupport-python/python/downloads.html>`_
+as wheels or folder ZIPs. Choose the package for your operating system,
+architecture, and Python version. Folder ZIPs contain only QuantSupport, so
+install its dependency separately with ``python -m pip install pandas``.
 
 .. toctree::
    :maxdepth: 2
@@ -20,55 +24,65 @@ the studies apply it to larger quantitative finance calculations.
    studies/index
    API reference <../autoapi/quantsupport/index>
 
-Each class has its own declaration page with constructors, parameter details,
-methods, properties, and class attributes. Domain packages group related types;
-the package root re-exports the same class objects for compatibility. Each domain
-is divided into focused subsections, such as Calendars, Yield Curves, Fixed
-Income, and Collateral and Netting.
+The API reference has one page per class, with its constructors, parameters,
+methods, properties, and class attributes. Classes are grouped by domain
+package, and each domain is split into smaller sections such as Calendars,
+Yield Curves, Fixed Income, and Collateral and Netting. The package root
+exports the same classes as the domain packages.
 
 Conventions
 -----------
 
-Signatures and parameter descriptions document accepted runtime input forms.
-The reference is generated from the packaged stubs and their docstrings.
-A default displayed as ``...`` comes from the native implementation; its
-parameter description states the actual default or how it is selected.
-Dates accept the documented
-``Date``, ISO text, or ``datetime.date`` inputs. Rates and spreads are decimal
-annual rates unless a parameter specifies other units.
-
-Properties without setters are read-only. Context input properties with setters
-invalidate the dependent constructed market when reassigned. Method calls such
-as ``evaluate()`` perform operations rather than exposing attributes.
-
-QuantSupport failures raise :py:class:`~quantsupport.QuantSupportError` or one of
-its subclasses. Native and Python interfaces share stable error codes and native
-variant names. Type, value, state, I/O, and unsupported-operation subclasses also
-inherit the corresponding Python built-in exception, preserving existing catches.
+- Signatures and parameter descriptions list the input types each argument
+  accepts. The reference is generated from the package's type stubs and their
+  docstrings.
+- A default shown as ``...`` is set by the native library. The parameter
+  description gives the actual default or explains how it is chosen.
+- Dates accept a ``Date``, ISO text such as ``"2026-02-24"``, or a
+  ``datetime.date``.
+- Rates and spreads are annual decimals unless a parameter states other units.
+- Properties without a setter are read-only.
+- Assigning a new value to a context input property makes the context rebuild
+  the market objects that depend on it.
+- Methods such as ``evaluate()`` perform calculations; they are not attributes.
 
 Exceptions
 ----------
 
+QuantSupport raises :py:class:`~quantsupport.QuantSupportError` or one of its
+subclasses. Each error has a stable error code and the name of the native error
+type.
+
+The subclasses for type, value, state, I/O, and unsupported-operation errors also
+inherit from the matching Python built-in exception. For example, an
+``except ValueError`` block also catches
+:py:class:`~quantsupport.QuantSupportValueError`.
+
 .. py:exception:: quantsupport.QuantSupportError
 
-   Shared structured failure for construction, input conversion, market-data
-   resolution, and evaluation. Inspect ``code``, ``native_type``, ``message``,
+   Error raised for failures in construction, input conversion, market-data
+   lookup, and evaluation. Inspect ``code``, ``native_type``, ``message``,
    ``operation``, ``path``, ``expected``, ``actual``, ``contexts``, and ``details``.
-   Fields that do not apply are ``None``. ``__cause__`` preserves the original
-   exception chain; ``to_dict()`` exports the same fields and nested causes.
-   Context annotations update the existing error; intermediate operations remain
-   in ``contexts`` instead of producing repeated chained exceptions.
+   Fields that do not apply are ``None``. ``__cause__`` holds the original
+   exception chain, and ``to_dict()`` exports the same fields and nested causes.
+   When an error passes through several operations, they are listed in
+   ``contexts`` instead of creating a chain of repeated exceptions.
 
-In Jupyter and IPython, failures show one continuous panel: the calling code's
-traceback leads directly into the error message, operation, input path, and
-expected and received types when available. Tracebacks include complete
-multiline calls and line markers, using the shell's selected color theme. Long
-messages wrap without truncation. Generated binding frames and cause chains are
-omitted from this display. Inspect ``error.__cause__`` or ``error.to_dict()`` for
-diagnostics, or use
-``traceback.print_exception(type(error), error, error.__traceback__)``
-to print the traceback including its causes. Standard Python tracebacks retain
-original causes and omit generated binding frames.
+In Jupyter and IPython, an error is shown as one panel. It starts with the
+traceback of your code and continues with the error message, the operation, the
+input path, and the expected and received types when available. Tracebacks show
+complete multiline calls and line markers in the shell's color theme. Long
+messages wrap and are not truncated.
+
+This display hides internal binding frames and the cause chain. To see the full
+details:
+
+- inspect ``error.__cause__`` or ``error.to_dict()``; or
+- print the traceback with its causes using
+  ``traceback.print_exception(type(error), error, error.__traceback__)``.
+
+Standard Python tracebacks keep the original causes and also hide internal
+binding frames.
 
 The Python subclasses are :py:class:`~quantsupport.QuantSupportTypeError`,
 :py:class:`~quantsupport.QuantSupportValueError`,
@@ -86,17 +100,17 @@ The Python subclasses are :py:class:`~quantsupport.QuantSupportTypeError`,
 
 For example, an invalid quote level can report ``code="deserialization"``,
 ``native_type="DeserializationErr"``, and ``path="quotes[1].mid"``. A missing
-quote instead reports ``code="not_found"`` and ``native_type="NotFoundErr"``.
-These come from native ``QSError`` categories, rather than message matching.
-File failures include the file path in ``details``; JSON failures also retain
-line and column when the parser supplies them.
+quote reports ``code="not_found"`` and ``native_type="NotFoundErr"``. Use these
+fields to handle errors; do not match on message text. File errors include the
+file path in ``details``. JSON errors also include the line and column when the
+parser provides them.
 
-Python protocols retain normal behavior for attribute lookup, missing mapping
-keys, iteration termination, and indexing: ``AttributeError``, ``KeyError``,
-``StopIteration``, and ``IndexError`` continue to work with Python's containers
-and inspection functions.
+Standard Python protocols behave as usual. Attribute lookup, missing mapping
+keys, the end of an iteration, and invalid indexes raise ``AttributeError``,
+``KeyError``, ``StopIteration``, and ``IndexError``, so the objects work with
+Python containers and inspection functions.
 
-Installation, a first valuation, protocols, and reproducibility are explained
-locally in :doc:`guide/first-valuation`. The
+:doc:`guide/first-valuation` covers installation, a first valuation, Python
+protocols, and reproducibility. The
 `binding README <https://github.com/jmelo11/quantsupport-python/blob/main/README.md>`_
-also contains source-build instructions and development checks.
+also has source-build instructions and development checks.
