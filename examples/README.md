@@ -274,8 +274,9 @@ Each notebook checks the library's results by an independent calculation:
 | Volatility | Smile interpolation; rate and volatility shocks affect only their own inputs |
 | Simulation | Calibration price errors and strike range; seeds; mean and variance against the Euler formulas |
 | Portfolio introduction | PV, risk and payments equal the sums over positions; central differences on zero rates; discounted payments equal PV; repeated and opposite positions |
+| Coupon and cashflow aggregation | PV, sensitivities and payment totals equal the sums over positions; merged notionals, weighted rates and spreads; TermSOFR3m coupons stay separate |
 | Portfolio risk | Rate and volatility sensitivities against central differences; discounted signed payments |
-| Scripting | Scripted bond equals the built-in pricer at zero volatility; caplet estimates across seeds |
+| Scripting | Scripted bond within 0.05% of the built-in pricer at zero volatility; caplet estimates across seeds |
 | Loans | Level payment by hand; receipt PVs; repricing at the par rate; funding PV01 against a bump |
 | XVA | `EE = EPE + ENE`; netting lowers positive exposure; margin changes CVA and FVA but not the profiles |
 
