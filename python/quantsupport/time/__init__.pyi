@@ -1193,6 +1193,7 @@ class Calendar:
     UnitedKingdom: Final[Calendar]
     Japan: Final[Calendar]
     Chile: Final[Calendar]
+    Colombia: Final[Calendar]
 
     @staticmethod
     def Australia(market: AustraliaMarket | None = ...) -> Calendar:
@@ -1334,7 +1335,8 @@ class Calendar:
         name : str
             Case-sensitive native name: ``NullCalendar``, ``WeekendsOnly``,
             ``TARGET``, ``Japan``, ``UnitedKingdom(Settlement)``, ``Chile(SSE)``,
-            ``UnitedStates(Sofr)`` (or another supported United States market),
+            ``Colombia(BVC)``, ``UnitedStates(Sofr)`` (or another supported
+            United States market),
             ``Brazil(Settlement)``, or ``Brazil(Exchange)``. Joint names use
             ``JointCalendar(JoinHolidays,TARGET,Japan)`` or the
             ``JoinBusinessDays`` rule and may contain nested joint calendars.
