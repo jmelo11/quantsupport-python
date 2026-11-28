@@ -1,6 +1,7 @@
 """Exceptions raised by QuantSupport operations."""
 
 from .quantsupport import (
+    QSError,
     QuantSupportError,
     QuantSupportIOError,
     QuantSupportNotImplementedError,
@@ -13,6 +14,7 @@ from .quantsupport import (
 )
 
 __all__ = [
+    "QSError",
     "QuantSupportError",
     "QuantSupportTypeError",
     "QuantSupportValueError",

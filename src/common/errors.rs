@@ -1,8 +1,13 @@
 //! One structured error boundary shared by every Python domain.
 
-use pyo3::prelude::*;
-use pyo3::types::PyDict;
+use pyo3::{
+    prelude::{Bound, Py, PyAny, PyErr, PyModule, PyResult, Python},
+    pyclass, pymethods,
+    types::{PyAnyMethods, PyDict, PyDictMethods, PyModuleMethods, PyStringMethods, PyTypeMethods},
+};
 use quantsupport::utils::errors::QSError;
+
+use crate::QSError as PyQSError;
 
 /// Keep the original allocation function while guarding Python argument extraction.
 /// Replacing __new__ with a Python wrapper around its descriptor is unsafe for
@@ -120,9 +125,20 @@ pub fn native(error: &QSError) -> PyErr {
         if let Ok(contexts) = pyo3::types::PyTuple::new(py, error.contexts()) {
             let _ = value.setattr("contexts", contexts);
         }
-        if let QSError::InvalidTypeErr { expected, actual } = root {
-            let _ = value.setattr("expected", expected);
-            let _ = value.setattr("actual", actual);
+        match root {
+            QSError::InvalidTypeErr { expected, actual } => {
+                let _ = value.setattr("expected", expected);
+                let _ = value.setattr("actual", actual);
+            }
+            QSError::InputCount { expected, actual }
+            | QSError::GradientCount { expected, actual }
+            | QSError::BufferCount {
+                expected, actual, ..
+            } => {
+                let _ = value.setattr("expected", expected.to_string());
+                let _ = value.setattr("actual", actual.to_string());
+            }
+            _ => {}
         }
         if let QSError::IoErr(cause) = root {
             result.set_cause(
@@ -130,10 +146,12 @@ pub fn native(error: &QSError) -> PyErr {
                 Some(pyo3::exceptions::PyOSError::new_err(cause.to_string())),
             );
         } else if let Some(cause) = std::error::Error::source(root) {
-            result.set_cause(
-                py,
-                Some(pyo3::exceptions::PyValueError::new_err(cause.to_string())),
-            );
+            let cause = if matches!(root, QSError::Jit(_)) {
+                pyo3::exceptions::PyRuntimeError::new_err(cause.to_string())
+            } else {
+                pyo3::exceptions::PyValueError::new_err(cause.to_string())
+            };
+            result.set_cause(py, Some(cause));
         }
         result
     })
@@ -142,7 +160,7 @@ pub fn native(error: &QSError) -> PyErr {
 fn support<'py>(py: Python<'py>, name: &str) -> PyResult<Bound<'py, PyAny>> {
     // The exception type is shared even when a native test constructs a module
     // directly, rather than importing the public package.
-    py.get_type::<crate::QuantSupportError>().getattr(name)
+    py.get_type::<PyQSError>().getattr(name)
 }
 
 pub fn make(
@@ -165,7 +183,7 @@ pub fn make(
             support(py, "_make_error")?.call((message,), Some(&kwargs))?,
         ))
     };
-    create().unwrap_or_else(|_| crate::QuantSupportError::new_err(message.to_owned()))
+    create().unwrap_or_else(|_| PyQSError::new_err(message.to_owned()))
 }
 
 pub fn invalid_value(message: impl std::fmt::Display) -> PyErr {
@@ -195,7 +213,7 @@ pub fn invalid_type(obj: &Bound<'_, PyAny>, expected: &str, path: Option<&str>) 
 
 /// Add context without flattening the original category, attributes, or cause.
 pub fn context(py: Python<'_>, error: PyErr, operation: Option<&str>, path: Option<&str>) -> PyErr {
-    if error.is_instance_of::<crate::QuantSupportError>(py) {
+    if error.is_instance_of::<PyQSError>(py) {
         let matches = |name: &str, requested: Option<&str>| {
             requested.is_none_or(|requested| {
                 error
@@ -227,11 +245,9 @@ pub fn context(py: Python<'_>, error: PyErr, operation: Option<&str>, path: Opti
 }
 
 pub fn initialize(module: &Bound<'_, PyModule>) -> PyResult<()> {
-    module.add(
-        "QuantSupportError",
-        module.py().get_type::<crate::QuantSupportError>(),
-    )?;
-    let base = module.py().get_type::<crate::QuantSupportError>();
+    let base = module.py().get_type::<PyQSError>();
+    module.add("QSError", &base)?;
+    module.add("QuantSupportError", &base)?;
     if let Ok(namespace) = base.getattr("_support_namespace") {
         for name in [
             "UnresolvedProductErr",
@@ -276,4 +292,126 @@ pub fn initialize(module: &Bound<'_, PyModule>) -> PyResult<()> {
         .getattr("_install_error_boundaries")?
         .call1((module.dict(),))?;
     Ok(())
+}
+
+#[cfg(test)]
+mod tests {
+    use std::{error::Error, fmt};
+
+    use pyo3::{
+        exceptions::{PyRuntimeError, PyValueError},
+        prelude::{PyModule, PyResult, Python},
+        types::{PyAnyMethods, PyDict, PyDictMethods, PyStringMethods},
+    };
+    use quantsupport::{
+        ad::{CompiledProgram, Graph},
+        utils::errors::QSError,
+    };
+
+    use crate::QSError as PyQSError;
+
+    use super::{initialize, native};
+
+    #[test]
+    fn compiled_input_errors_keep_the_native_layout_and_category() -> Result<(), Box<dyn Error>> {
+        let kernel = Graph::trace(&[2.0], |inputs| inputs[0] * inputs[0])?.compile()?;
+        let error = kernel
+            .value_and_grad(&[], &mut [0.0])
+            .unwrap_err()
+            .context("evaluating compiled price");
+        Python::initialize();
+        Python::attach(|py| -> PyResult<()> {
+            let module = PyModule::new(py, "quantsupport")?;
+            initialize(&module)?;
+            let error = native(&error);
+            assert!(error.is_instance_of::<PyQSError>(py));
+            assert!(error.is_instance_of::<PyValueError>(py));
+            let value = error.value(py);
+            assert_eq!(value.getattr("code")?.extract::<String>()?, "input_count");
+            assert_eq!(
+                value.getattr("native_type")?.extract::<String>()?,
+                "InputCount"
+            );
+            assert_eq!(value.getattr("expected")?.extract::<String>()?, "1");
+            assert_eq!(value.getattr("actual")?.extract::<String>()?, "0");
+            assert_eq!(
+                value.getattr("contexts")?.extract::<Vec<String>>()?,
+                ["evaluating compiled price"]
+            );
+            assert!(error.cause(py).is_none());
+            assert!(module
+                .getattr("QSError")?
+                .is(module.getattr("QuantSupportError")?));
+            Ok(())
+        })?;
+        Ok(())
+    }
+
+    #[test]
+    fn changed_comparisons_are_shared_python_state_errors() -> Result<(), Box<dyn Error>> {
+        let program = CompiledProgram::trace(&[1.0], 1, |inputs| {
+            let value = if inputs[0] > 0.0 {
+                inputs[0]
+            } else {
+                -inputs[0]
+            };
+            Ok::<_, QSError>((value, vec![value]))
+        })?;
+        let mut outputs = vec![0.0; program.output_count()];
+        let error = program
+            .evaluate(&[-1.0], &mut outputs, &mut [0.0])
+            .unwrap_err();
+        Python::initialize();
+        Python::attach(|py| -> PyResult<()> {
+            let module = PyModule::new(py, "quantsupport")?;
+            initialize(&module)?;
+            let error = native(&error);
+            assert!(error.is_instance_of::<PyQSError>(py));
+            assert!(error.is_instance_of::<PyRuntimeError>(py));
+            assert_eq!(
+                error.value(py).getattr("code")?.extract::<String>()?,
+                "comparison_changed"
+            );
+            assert_eq!(
+                error
+                    .value(py)
+                    .getattr("native_type")?
+                    .extract::<String>()?,
+                "ComparisonChanged"
+            );
+            Ok(())
+        })?;
+        Ok(())
+    }
+
+    #[test]
+    fn native_compiler_failures_retain_their_python_cause() -> PyResult<()> {
+        let error = QSError::Jit(Box::new(fmt::Error)).context("compiling scripted price");
+        Python::initialize();
+        Python::attach(|py| {
+            let module = PyModule::new(py, "quantsupport")?;
+            initialize(&module)?;
+            let error = native(&error);
+            assert!(error.is_instance_of::<PyQSError>(py));
+            assert!(error.is_instance_of::<PyRuntimeError>(py));
+            let value = error.value(py);
+            assert_eq!(value.getattr("code")?.extract::<String>()?, "jit");
+            assert_eq!(value.getattr("native_type")?.extract::<String>()?, "Jit");
+            let cause = error
+                .cause(py)
+                .ok_or_else(|| PyRuntimeError::new_err("missing compiler cause"))?;
+            assert!(cause.is_instance_of::<PyRuntimeError>(py));
+            assert_eq!(cause.value(py).str()?.to_str()?, fmt::Error.to_string());
+            let payload = value.call_method0("to_dict")?;
+            let payload = payload.cast::<PyDict>()?;
+            assert_eq!(
+                payload
+                    .get_item("code")?
+                    .ok_or_else(|| PyRuntimeError::new_err("missing error code"))?
+                    .extract::<String>()?,
+                "jit"
+            );
+            Ok(())
+        })
+    }
 }

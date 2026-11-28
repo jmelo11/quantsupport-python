@@ -825,8 +825,8 @@ dependencies = [
 
 [[package]]
 name = "quantsupport"
-version = "0.1.25"
-source = "git+https://github.com/jmelo11/quantsupport?rev=251abc5e71aff7b979929c6b7f4ef821ef22c7e9#251abc5e71aff7b979929c6b7f4ef821ef22c7e9"
+version = "0.1.26"
+source = "git+https://github.com/jmelo11/quantsupport?rev=16c38918452876127d8473c3036cc7fb375b0dc4#16c38918452876127d8473c3036cc7fb375b0dc4"
 dependencies = [
  "chrono",
  "cranelift-codegen",

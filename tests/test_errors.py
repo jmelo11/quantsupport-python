@@ -14,7 +14,7 @@ from quantsupport import quantsupport as native
 
 class StructuredErrorTests(unittest.TestCase):
     def capture(self, function):
-        with self.assertRaises(qs.QuantSupportError) as caught:
+        with self.assertRaises(qs.QSError) as caught:
             function()
         error = caught.exception
         payload = error.to_dict()
@@ -45,15 +45,26 @@ class StructuredErrorTests(unittest.TestCase):
 
     def test_error_types_are_identical_in_public_and_native_interfaces(self):
         for name in [
+            "QSError",
             "QuantSupportError",
             "QuantSupportTypeError",
             "QuantSupportValueError",
             "QuantSupportStateError",
             "QuantSupportIOError",
             "QuantSupportNotImplementedError",
+            "UnresolvedProductErr",
         ]:
             self.assertIs(getattr(qs, name), getattr(native, name))
-            self.assertTrue(issubclass(getattr(qs, name), qs.QuantSupportError))
+            self.assertTrue(issubclass(getattr(qs, name), qs.QSError))
+
+    def test_legacy_base_name_is_the_same_exception(self):
+        self.assertIs(qs.QuantSupportError, qs.QSError)
+        self.assertEqual(qs.QSError.__name__, "QSError")
+        self.assertIn("QSError", qs.__all__)
+        original = qs.QSError("missing discount curve", code="not_found")
+        with self.assertRaises(qs.QuantSupportError) as caught:
+            raise original
+        self.assertIs(caught.exception, original)
 
     def test_reinstalling_error_boundaries_preserves_classmethods(self):
         original = qs.Loan(
@@ -431,6 +442,38 @@ def make_deposit():
         self.assertEqual(error.path, "rate")
         self.assertEqual(error.contexts, ("CustomPricer.evaluate",))
         self.assertEqual(error.to_dict()["cause"]["message"], "negative rate")
+
+    def test_compilation_categories_survive_python_callback_context(self):
+        class Provider:
+            evaluation_date = "2026-02-24"
+
+        class Pricer:
+            def __init__(self, failure):
+                self.failure = failure
+
+            def evaluate(self, trade, requests, context):
+                raise self.failure
+
+        trade = qs.Trade(qs.Instrument("I"), "2026-02-24")
+        for code, native_type, builtin in [
+            ("input_count", "InputCount", ValueError),
+            ("comparison_changed", "ComparisonChanged", RuntimeError),
+        ]:
+            with self.subTest(code=code):
+                original = native._make_error(
+                    "compiled price cannot run",
+                    code=code,
+                    operation="CompiledProgram.evaluate",
+                    native_type=native_type,
+                )
+                evaluator = qs.Evaluator()
+                evaluator.register(qs.Trade, Pricer(original))
+                error = self.capture(lambda: evaluator.evaluate(trade, Provider()))
+                self.assertIs(error, original)
+                self.assertIsInstance(error, builtin)
+                self.assertEqual((error.code, error.native_type), (code, native_type))
+                self.assertEqual(error.operation, "Evaluator.evaluate")
+                self.assertEqual(error.contexts, ("CompiledProgram.evaluate",))
 
     def test_python_protocol_and_constructor_signatures_remain_valid(self):
         self.assertEqual(

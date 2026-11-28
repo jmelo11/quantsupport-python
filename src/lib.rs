@@ -11,7 +11,7 @@ use pyo3::prelude::*;
 
 pyo3::create_exception!(
     quantsupport,
-    QuantSupportError,
+    QSError,
     pyo3::exceptions::PyException,
     "Raised when a quantsupport operation fails."
 );

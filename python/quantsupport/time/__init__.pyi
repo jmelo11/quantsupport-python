@@ -1193,6 +1193,7 @@ class Calendar:
     UnitedKingdom: Final[Calendar]
     Japan: Final[Calendar]
     Chile: Final[Calendar]
+    Colombia: Final[Calendar]
 
     @staticmethod
     def Australia(market: AustraliaMarket | None = ...) -> Calendar:

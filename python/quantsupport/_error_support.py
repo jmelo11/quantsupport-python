@@ -11,7 +11,7 @@ import traceback as _traceback
 import types as _types
 
 
-def _initialize(QuantSupportError):
+def _initialize(QSError):
     """Initialize error support using the native exception base."""
 
     def _user_traceback(traceback, notebook=False):
@@ -201,7 +201,7 @@ def _initialize(QuantSupportError):
                     "message": "cyclic exception cause",
                 }
             seen.add(id(error))
-            if not isinstance(error, QuantSupportError):
+            if not isinstance(error, QSError):
                 return {"type": type(error).__name__, "message": str(error)}
             return {
                 "code": error.code,
@@ -220,23 +220,23 @@ def _initialize(QuantSupportError):
 
         return serialize(self, set())
 
-    QuantSupportError.__init__ = _error_init
-    QuantSupportError.__str__ = _error_str
-    QuantSupportError.__repr__ = _error_repr
-    QuantSupportError._render_traceback_ = _error_render_traceback
-    QuantSupportError.to_dict = _error_to_dict
+    QSError.__init__ = _error_init
+    QSError.__str__ = _error_str
+    QSError.__repr__ = _error_repr
+    QSError._render_traceback_ = _error_render_traceback
+    QSError.to_dict = _error_to_dict
 
-    class QuantSupportTypeError(QuantSupportError, TypeError):
+    class QuantSupportTypeError(QSError, TypeError):
         """An input has an incompatible type; also catchable as TypeError."""
 
         __module__ = "quantsupport"
 
-    class QuantSupportValueError(QuantSupportError, ValueError):
+    class QuantSupportValueError(QSError, ValueError):
         """An input has an invalid value; also catchable as ValueError."""
 
         __module__ = "quantsupport"
 
-    class QuantSupportStateError(QuantSupportError, RuntimeError):
+    class QuantSupportStateError(QSError, RuntimeError):
         """An operation cannot run in the current state; also a RuntimeError."""
 
         __module__ = "quantsupport"
@@ -246,12 +246,12 @@ def _initialize(QuantSupportError):
 
         __module__ = "quantsupport"
 
-    class QuantSupportIOError(QuantSupportError, OSError):
+    class QuantSupportIOError(QSError, OSError):
         """An I/O operation failed; also catchable as OSError."""
 
         __module__ = "quantsupport"
 
-    class QuantSupportNotImplementedError(QuantSupportError, NotImplementedError):
+    class QuantSupportNotImplementedError(QSError, NotImplementedError):
         """The requested operation is not implemented; also a NotImplementedError."""
 
         __module__ = "quantsupport"
@@ -280,16 +280,34 @@ def _initialize(QuantSupportError):
             "quote_parsing",
             "deserialization",
             "schedule",
+            "invalid_graph",
+            "input_count",
+            "gradient_count",
+            "buffer_count",
+            "offset_overflow",
         ):
             cls = QuantSupportValueError
         elif code == "io":
             cls = QuantSupportIOError
         elif code == "not_implemented":
             cls = QuantSupportNotImplementedError
-        elif code in ("evaluation", "node", "tape", "node_not_indexed", "dual_forward"):
+        elif code in (
+            "evaluation",
+            "node",
+            "capture",
+            "node_not_indexed",
+            "dual_forward",
+            "comparison_changed",
+            "second_order_unavailable",
+            "nested_capture",
+            "capture_missing",
+            "foreign_value",
+            "dynamic_control_flow",
+            "jit",
+        ):
             cls = QuantSupportStateError
         else:
-            cls = QuantSupportError
+            cls = QSError
         return cls(
             message,
             code,
@@ -303,7 +321,7 @@ def _initialize(QuantSupportError):
         )
 
     def _with_context(error, operation=None, path=None, expected=None, actual=None):
-        if isinstance(error, QuantSupportError):
+        if isinstance(error, QSError):
             if operation is not None and operation != error.operation:
                 if error.operation:
                     error.contexts = (error.operation, *error.contexts)
@@ -350,7 +368,7 @@ def _initialize(QuantSupportError):
             try:
                 try:
                     return function(*args, **kwargs)
-                except QuantSupportError as error:
+                except QSError as error:
                     _with_context(error, operation)
                     raise
                 except StopIteration:
@@ -358,7 +376,7 @@ def _initialize(QuantSupportError):
                 except Exception as error:
                     error.__traceback__ = _user_traceback(error.__traceback__)
                     raise _with_context(error, operation) from error
-            except QuantSupportError as error:
+            except QSError as error:
                 error.__traceback__ = _user_traceback(error.__traceback__)
                 raise
 
@@ -397,7 +415,7 @@ def _initialize(QuantSupportError):
         def construct(cls, *args, **kwargs):
             try:
                 return allocator(cls, *args, **kwargs)
-            except QuantSupportError as error:
+            except QSError as error:
                 error.__traceback__ = _user_traceback(error.__traceback__)
                 raise
 

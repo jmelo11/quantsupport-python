@@ -2,8 +2,8 @@
 
 from typing import Any, Mapping, Sequence
 
-class QuantSupportError(Exception):
-    """Base for QuantSupport failures, preserving the native category and cause.
+class QSError(Exception):
+    """Base for all QuantSupport failures, preserving the native category and cause.
 
     Parameters
     ----------
@@ -57,28 +57,31 @@ class QuantSupportError(Exception):
     def __str__(self) -> str: ...
     def __repr__(self) -> str: ...
 
-class QuantSupportTypeError(QuantSupportError, TypeError):
-    """Incompatible input type; catch as QuantSupportError or TypeError."""
+QuantSupportError = QSError
+"""Alias of QSError, sharing its exception identity and diagnostic fields."""
+
+class QuantSupportTypeError(QSError, TypeError):
+    """Incompatible input type; catch as QSError or TypeError."""
 
     ...
 
-class QuantSupportValueError(QuantSupportError, ValueError):
-    """Invalid input value; catch as QuantSupportError or ValueError."""
+class QuantSupportValueError(QSError, ValueError):
+    """Invalid input value; catch as QSError or ValueError."""
 
     ...
 
-class QuantSupportStateError(QuantSupportError, RuntimeError):
-    """Invalid operation state; catch as QuantSupportError or RuntimeError."""
+class QuantSupportStateError(QSError, RuntimeError):
+    """Invalid operation state; catch as QSError or RuntimeError."""
 
     ...
 
-class QuantSupportIOError(QuantSupportError, OSError):
-    """I/O failure; catch as QuantSupportError or OSError."""
+class QuantSupportIOError(QSError, OSError):
+    """I/O failure; catch as QSError or OSError."""
 
     ...
 
-class QuantSupportNotImplementedError(QuantSupportError, NotImplementedError):
-    """Unsupported operation; catch as QuantSupportError or NotImplementedError."""
+class QuantSupportNotImplementedError(QSError, NotImplementedError):
+    """Unsupported operation; catch as QSError or NotImplementedError."""
 
     ...
 

@@ -49,24 +49,29 @@ Conventions
 Exceptions
 ----------
 
-QuantSupport raises :py:class:`~quantsupport.QuantSupportError` or one of its
+QuantSupport raises :py:class:`~quantsupport.QSError` or one of its
 subclasses. Each error has a stable error code and the name of the native error
-type.
+type. :py:class:`~quantsupport.QuantSupportError` is an alias of ``QSError``.
 
 The subclasses for type, value, state, I/O, and unsupported-operation errors also
 inherit from the matching Python built-in exception. For example, an
 ``except ValueError`` block also catches
 :py:class:`~quantsupport.QuantSupportValueError`.
 
-.. py:exception:: quantsupport.QuantSupportError
+.. py:exception:: quantsupport.QSError
 
    Error raised for failures in construction, input conversion, market-data
-   lookup, and evaluation. Inspect ``code``, ``native_type``, ``message``,
-   ``operation``, ``path``, ``expected``, ``actual``, ``contexts``, and ``details``.
+   lookup, numerical recording, compilation, and evaluation. Inspect ``code``,
+   ``native_type``, ``message``, ``operation``, ``path``, ``expected``, ``actual``,
+   ``contexts``, and ``details``.
    Fields that do not apply are ``None``. ``__cause__`` holds the original
    exception chain, and ``to_dict()`` exports the same fields and nested causes.
    When an error passes through several operations, they are listed in
    ``contexts`` instead of creating a chain of repeated exceptions.
+
+.. py:exception:: quantsupport.QuantSupportError
+
+   Alias of :py:class:`~quantsupport.QSError`. Both names catch the same errors.
 
 In Jupyter and IPython, an error is shown as one panel. It starts with the
 traceback of your code and continues with the error message, the operation, the
@@ -94,7 +99,7 @@ The Python subclasses are :py:class:`~quantsupport.QuantSupportTypeError`,
 
    try:
        quotes = qs.QuoteStore.from_dict(market_inputs)
-   except qs.QuantSupportError as error:
+   except qs.QSError as error:
        print(error.code, error.operation, error.path)
        diagnostics = error.to_dict()
 
@@ -104,6 +109,14 @@ quote reports ``code="not_found"`` and ``native_type="NotFoundErr"``. Use these
 fields to handle errors; do not match on message text. File errors include the
 file path in ``details``. JSON errors also include the line and column when the
 parser provides them.
+
+Numerical capture and compilation errors keep the Rust ``QSError`` category.
+For example, ``code="comparison_changed"`` and
+``native_type="ComparisonChanged"`` mean that the current inputs would take a
+different Rust branch from the recorded calculation. Record the calculation
+again for those inputs. Invalid numerical buffer sizes report ``input_count``,
+``gradient_count``, or ``buffer_count`` and include the required and supplied
+lengths in ``expected`` and ``actual``.
 
 Standard Python protocols behave as usual. Attribute lookup, missing mapping
 keys, the end of an iteration, and invalid indexes raise ``AttributeError``,

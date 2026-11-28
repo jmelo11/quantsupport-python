@@ -1,5 +1,7 @@
 """Dictionary and native scripting contracts; also exercised by cargo test."""
 
+import ast
+import inspect
 import json
 import math
 import tempfile
@@ -12,9 +14,6 @@ import quantsupport as qs
 
 class DictAndScriptTests(unittest.TestCase):
     def test_public_type_hints_are_packaged_and_cover_native_classes(self):
-        import ast
-        import inspect
-
         module_file = getattr(qs, "__file__", None)
         if module_file:
             stub = Path(module_file).with_name("__init__.pyi")
@@ -28,6 +27,7 @@ class DictAndScriptTests(unittest.TestCase):
                 / "__init__.pyi"
             )
         declarations = {}
+        class_aliases = {}
         for stub_file in stub.parent.rglob("*.pyi"):
             for node in ast.parse(stub_file.read_text(encoding="utf-8")).body:
                 if isinstance(node, ast.ClassDef):
@@ -41,6 +41,18 @@ class DictAndScriptTests(unittest.TestCase):
                                 ast.get_docstring(member), f"{node.name}.{member.name}"
                             )
                     declarations[node.name] = node
+                elif (
+                    isinstance(node, ast.Assign)
+                    and len(node.targets) == 1
+                    and isinstance(node.targets[0], ast.Name)
+                    and not node.targets[0].id.startswith("_")
+                    and isinstance(node.value, ast.Name)
+                ):
+                    class_aliases[node.targets[0].id] = node.value.id
+        for alias, target in class_aliases.items():
+            self.assertIn(target, declarations, alias)
+            self.assertIs(getattr(qs, alias), getattr(qs, target))
+            declarations[alias] = declarations[target]
         exported = {
             name
             for name, value in vars(qs).items()
