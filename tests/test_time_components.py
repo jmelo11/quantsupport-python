@@ -39,6 +39,7 @@ class TimeComponentTests(unittest.TestCase):
             "UnitedKingdom": "UnitedKingdom(Settlement)",
             "Japan": "Japan",
             "Chile": "Chile(SSE)",
+            "Colombia": "Colombia(BVC)",
         }
         for attribute, name in fixed.items():
             calendar = getattr(qs.Calendar, attribute)
@@ -62,6 +63,8 @@ class TimeComponentTests(unittest.TestCase):
             self.assertEqual(calendar.name(), f"Brazil({market})")
         self.assertEqual(qs.Calendar.UnitedStates().name(), "UnitedStates(Sofr)")
         self.assertEqual(qs.Calendar.Brazil().name(), "Brazil(Settlement)")
+        self.assertTrue(qs.Calendar.Colombia.is_holiday("2026-01-12"))
+        self.assertTrue(qs.Calendar.Colombia.is_business_day("2026-01-06"))
 
     def test_override_isolation_and_copied_sorted_lists(self):
         base = qs.Calendar.TARGET

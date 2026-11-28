@@ -15,10 +15,10 @@ use quantsupport::prelude::{
 
 use quantsupport::time::calendars::{
     australia::Australia, brazil::Brazil, canada::Canada, chile::Chile, china::China,
-    denmark::Denmark, japan::Japan, jointcalendar::JointCalendar, newzealand::NewZealand,
-    norway::Norway, nullcalendar::NullCalendar, southafrica::SouthAfrica, southkorea::SouthKorea,
-    sweden::Sweden, switzerland::Switzerland, target::TARGET, unitedkingdom::UnitedKingdom,
-    unitedstates::UnitedStates, weekendsonly::WeekendsOnly,
+    colombia::Colombia, denmark::Denmark, japan::Japan, jointcalendar::JointCalendar,
+    newzealand::NewZealand, norway::Norway, nullcalendar::NullCalendar, southafrica::SouthAfrica,
+    southkorea::SouthKorea, sweden::Sweden, switzerland::Switzerland, target::TARGET,
+    unitedkingdom::UnitedKingdom, unitedstates::UnitedStates, weekendsonly::WeekendsOnly,
 };
 
 use crate::common::conversion::{
@@ -404,6 +404,12 @@ impl Calendar {
             inner: QsCalendar::Chile(Chile::default()),
         }
     }
+    #[classattr]
+    fn Colombia() -> Self {
+        Self {
+            inner: QsCalendar::Colombia(Colombia::default()),
+        }
+    }
 
     /// United States calendar for the selected market.
     ///
@@ -664,6 +670,7 @@ mod tests {
                 QsCalendar::UnitedKingdom(UnitedKingdom::new()),
                 QsCalendar::Japan(Japan::new()),
                 QsCalendar::Chile(Chile::default()),
+                QsCalendar::Colombia(Colombia::default()),
                 QsCalendar::UnitedStates(UnitedStates::default()),
                 QsCalendar::Brazil(Brazil::default()),
                 QsCalendar::JointCalendar(JointCalendar::new(
@@ -690,6 +697,7 @@ mod tests {
                     QsCalendar::UnitedKingdom(_) => class.getattr("UnitedKingdom")?,
                     QsCalendar::Japan(_) => class.getattr("Japan")?,
                     QsCalendar::Chile(_) => class.getattr("Chile")?,
+                    QsCalendar::Colombia(_) => class.getattr("Colombia")?,
                     QsCalendar::UnitedStates(_) => class.call_method0("UnitedStates")?,
                     QsCalendar::Brazil(_) => class.call_method0("Brazil")?,
                     QsCalendar::JointCalendar(_) => {

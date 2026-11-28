@@ -25,6 +25,7 @@ class TypedCalendarTests(unittest.TestCase):
             (qs.Calendar.UnitedKingdom, "UnitedKingdom(Settlement)"),
             (qs.Calendar.Japan, "Japan"),
             (qs.Calendar.Chile, "Chile(SSE)"),
+            (qs.Calendar.Colombia, "Colombia(BVC)"),
             (
                 qs.Calendar.UnitedStates(market=qs.UnitedStatesMarket.Nyse),
                 "UnitedStates(Nyse)",
