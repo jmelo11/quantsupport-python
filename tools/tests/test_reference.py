@@ -206,9 +206,7 @@ class PythonReferenceTests(unittest.TestCase):
             public_annotation("PythonDate | PythonDateTime | _pricing.Trade"),
             "datetime.date | datetime.datetime | quantsupport.pricing.Trade",
         )
-        source = declaration_source(
-            SimpleNamespace(id="quantsupport.QuantSupportError")
-        )
+        source = declaration_source(SimpleNamespace(id="quantsupport.QSError"))
         self.assertIn("/quantsupport/_exceptions.pyi#L", source)
 
     def test_caplet_relative_strike_describes_its_consumer_not_the_generic_helper(self):

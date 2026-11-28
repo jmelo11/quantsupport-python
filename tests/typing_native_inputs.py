@@ -5,6 +5,12 @@ from typing import Any
 import quantsupport as qs
 from typing_extensions import assert_type
 
+error = qs.QSError("compiled input count mismatch", code="input_count")
+assert_type(error, qs.QSError)
+assert_type(error.code, str)
+assert_type(error.to_dict(), dict[str, Any])
+assert_type(qs.QuantSupportError("legacy import"), qs.QSError)
+
 assert_type(qs.Currency.EUR, qs.Currency)
 assert_type(qs.MarketIndex.EURIBOR12m, qs.MarketIndex)
 assert_type(qs.MarketIndex.other(name="FUNDING"), qs.MarketIndex)

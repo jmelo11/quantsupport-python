@@ -18,7 +18,7 @@ use quantsupport::{
 };
 use serde::de::DeserializeOwned;
 
-/// Maps any library error into the Python `QuantSupportError` exception.
+/// Maps any library error into the Python `QSError` exception hierarchy.
 pub fn qs_err<E: std::fmt::Display + 'static>(e: E) -> PyErr {
     let value = &e as &dyn std::any::Any;
     if let Some(error) = value.downcast_ref::<QSError>() {

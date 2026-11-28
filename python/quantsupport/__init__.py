@@ -20,6 +20,9 @@ from . import (
     time as time,
 )
 from ._exceptions import (
+    QSError as QSError,
+)
+from ._exceptions import (
     QuantSupportError as QuantSupportError,
 )
 from ._exceptions import (
@@ -451,6 +454,7 @@ __all__ = [
     "NettingSet",
     "XvaResult",
     "ExposureProfile",
+    "QSError",
     "QuantSupportError",
     "QuantSupportTypeError",
     "QuantSupportValueError",

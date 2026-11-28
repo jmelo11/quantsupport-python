@@ -5,7 +5,7 @@ from pathlib import Path
 from python_api import declarations
 from sphinx.errors import ExtensionError
 
-PYTHON_EXCEPTIONS = "QuantSupportError QuantSupportTypeError QuantSupportValueError QuantSupportStateError QuantSupportIOError QuantSupportNotImplementedError UnresolvedProductErr".split()
+PYTHON_EXCEPTIONS = "QSError QuantSupportTypeError QuantSupportValueError QuantSupportStateError QuantSupportIOError QuantSupportNotImplementedError UnresolvedProductErr".split()
 
 
 PYTHON_SECTIONS = {
@@ -111,6 +111,7 @@ def generate_python_navigation(app):
                     ("UnitedKingdom", "Calendar.UnitedKingdom"),
                     ("Japan", "Calendar.Japan"),
                     ("Chile", "Calendar.Chile"),
+                    ("Colombia", "Calendar.Colombia"),
                     (
                         "UnitedStates",
                         "Calendar.UnitedStates(market=UnitedStatesMarket.Sofr)",
